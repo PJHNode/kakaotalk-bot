@@ -24,9 +24,7 @@
   --yellow-dim: rgba(245, 200, 66, 0.15);
   color-scheme: dark;
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 body {
   background: var(--bg);
   color: var(--fg);
@@ -36,386 +34,224 @@ body {
   min-height: 100vh;
   padding: 0 16px;
 }
-
 .mono { font-family: 'JetBrains Mono', monospace; }
-
-/* Layout */
-.app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 24px 0 48px;
-}
+.app { max-width: 1100px; margin: 0 auto; padding: 24px 0 48px; }
 
 header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
 }
-
 header h1 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--fg-bright);
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700;
+  color: var(--fg-bright); display: flex; align-items: center; gap: 10px;
 }
-
 .status-dot {
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  background: var(--fg-dim);
-  flex-shrink: 0;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--fg-dim); flex-shrink: 0;
 }
 .status-dot.online {
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
+  background: var(--green); box-shadow: 0 0 8px var(--green);
   animation: pulse 2s infinite;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.conn-info { font-size: 12px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; }
+.conn-info.on { color: var(--green); }
+.conn-info.off { color: var(--red); }
 
-.connection-info {
-  font-size: 12px;
-  color: var(--fg-dim);
-  font-family: 'JetBrains Mono', monospace;
-}
-.connection-info.connected { color: var(--green); }
-.connection-info.disconnected { color: var(--red); }
-
-/* Stats row */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-bottom: 28px;
-}
-
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-}
-.stat-card .label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--fg-dim);
-  margin-bottom: 4px;
-}
-.stat-card .value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--fg-bright);
-}
+/* Stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 12px; margin-bottom: 28px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--fg-dim); margin-bottom: 4px; }
+.stat-card .value { font-family: 'JetBrains Mono', monospace; font-size: 22px; font-weight: 700; color: var(--fg-bright); }
 
 /* Tabs */
-.tabs {
-  display: flex;
-  gap: 2px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 20px;
-  overflow-x: auto;
-}
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
 .tab {
-  padding: 10px 18px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--fg-dim);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-  font-family: inherit;
+  padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--fg-dim);
+  cursor: pointer; border: none; border-bottom: 2px solid transparent;
+  background: none; white-space: nowrap; font-family: inherit; transition: color .15s, border-color .15s;
 }
 .tab:hover { color: var(--fg); }
-.tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.panel { display: none; } .panel.active { display: block; }
 
-.panel { display: none; }
-.panel.active { display: block; }
-
-/* Tables */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-thead th {
-  text-align: left;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--fg-dim);
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  font-weight: 500;
-}
-tbody td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
+/* Table */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); padding: 8px 12px; border-bottom: 1px solid var(--border); font-weight: 500; }
+tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tbody tr:hover { background: var(--surface); }
 
-/* Badges */
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: 'JetBrains Mono', monospace;
-}
+/* Badge */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 .badge-v { background: var(--accent-glow); color: var(--accent); }
 .badge-iv { background: var(--green-dim); color: var(--green); }
 .badge-iii { background: var(--yellow-dim); color: var(--yellow); }
-.badge-ii { background: rgba(200,200,216,0.1); color: var(--fg); }
+.badge-ii { background: rgba(200,200,216,.1); color: var(--fg); }
 .badge-i { background: var(--red-dim); color: var(--red); }
-.badge-0 { background: rgba(100,100,120,0.15); color: var(--fg-dim); }
+.badge-0 { background: rgba(100,100,120,.15); color: var(--fg-dim); }
 
 /* Buttons */
-.btn {
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--fg);
-  font-size: 12px;
-  cursor: pointer;
-  font-family: 'Noto Sans KR', sans-serif;
-  transition: background 0.15s, border-color 0.15s;
-}
+.btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--fg); font-size: 12px; cursor: pointer; font-family: inherit; transition: background .15s; }
 .btn:hover { background: var(--surface2); border-color: var(--fg-dim); }
-.btn-accent {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn-accent:hover { background: #4a5ce0; }
-.btn-red {
-  background: var(--red-dim);
-  border-color: var(--red);
-  color: var(--red);
-}
-.btn-red:hover { background: rgba(245, 91, 122, 0.25); }
+.btn-red { background: var(--red-dim); border-color: var(--red); color: var(--red); }
 .btn-sm { padding: 4px 10px; font-size: 11px; }
 
 /* Inputs */
 input, select, textarea {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 12px;
-  color: var(--fg-bright);
-  font-size: 13px;
-  font-family: 'Noto Sans KR', sans-serif;
-  outline: none;
-  transition: border-color 0.15s;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; color: var(--fg-bright); font-size: 13px; font-family: inherit; outline: none;
 }
-input:focus, select:focus, textarea:focus {
-  border-color: var(--accent);
-}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 select { cursor: pointer; }
+textarea { resize: vertical; min-height: 36px; }
 
-/* Section headers */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.section-header h2 {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--fg-bright);
-}
-
-/* Troll form */
-.form-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+.section-header h2 { font-size: 15px; font-weight: 600; color: var(--fg-bright); }
+.form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .form-row input, .form-row select { min-width: 0; }
+.empty { text-align: center; padding: 32px 16px; color: var(--fg-dim); font-size: 13px; }
 
-/* Send message form */
-.send-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  flex-wrap: wrap;
-}
-.send-form select { flex: 0 0 auto; max-width: 200px; }
-.send-form input { flex: 1; min-width: 150px; }
-
-/* Empty state */
-.empty {
-  text-align: center;
-  padding: 40px 16px;
-  color: var(--fg-dim);
-  font-size: 13px;
-}
+/* Chat log */
+.msg-list { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.msg-item { padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.msg-item:last-child { border-bottom: none; }
+.msg-item .nick { color: var(--accent); font-weight: 600; font-size: 12px; }
+.msg-item .time { color: var(--fg-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; margin-left: 8px; }
+.msg-item .text { margin-top: 2px; color: var(--fg-bright); word-break: break-word; }
+.msg-item.deleted { border-left: 3px solid var(--red); }
 
 /* Toast */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--fg-bright);
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  opacity: 0;
-  transition: transform 0.3s, opacity 0.3s;
-  z-index: 100;
-  pointer-events: none;
-}
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); color: var(--fg-bright); padding: 10px 20px; border-radius: 8px; font-size: 13px; opacity: 0; transition: transform .3s, opacity .3s; z-index: 100; pointer-events: none; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-/* Responsive */
 @media (max-width: 600px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats { grid-template-columns: repeat(2,1fr); }
   .stat-card .value { font-size: 18px; }
-  table { font-size: 12px; }
-  thead th, tbody td { padding: 8px 6px; }
   .form-row { flex-direction: column; }
   .form-row input, .form-row select { width: 100%; }
+  .tab { padding: 8px 12px; font-size: 12px; }
 }
 </style>
 </head>
 <body>
-
 <div class="app">
   <header>
-    <h1>
-      <span class="status-dot" id="statusDot"></span>
-      PJH_BOT
-    </h1>
-    <span class="connection-info disconnected" id="connInfo">connecting...</span>
+    <h1><span class="status-dot" id="statusDot"></span> PJH_BOT</h1>
+    <span class="conn-info off" id="connInfo">connecting...</span>
   </header>
 
-  <div class="stats" id="statsRow">
-    <div class="stat-card">
-      <div class="label">Uptime</div>
-      <div class="value mono" id="statUptime">--</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Rooms</div>
-      <div class="value mono" id="statRooms">--</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Messages</div>
-      <div class="value mono" id="statMsgs">--</div>
-    </div>
-    <div class="stat-card">
-      <div class="label">Deleted</div>
-      <div class="value mono" id="statDel">--</div>
-    </div>
+  <div class="stats">
+    <div class="stat-card"><div class="label">Uptime</div><div class="value mono" id="sUp">--</div></div>
+    <div class="stat-card"><div class="label">Rooms</div><div class="value mono" id="sRm">--</div></div>
+    <div class="stat-card"><div class="label">Messages</div><div class="value mono" id="sMs">--</div></div>
+    <div class="stat-card"><div class="label">Deleted</div><div class="value mono" id="sDl">--</div></div>
   </div>
 
   <div class="tabs">
     <button class="tab active" data-tab="rooms">Rooms</button>
     <button class="tab" data-tab="perms">Permissions</button>
     <button class="tab" data-tab="troll">Blacklist</button>
+    <button class="tab" data-tab="reply">Fake Reply</button>
     <button class="tab" data-tab="send">Send</button>
+    <button class="tab" data-tab="logs">Messages</button>
+    <button class="tab" data-tab="deleted">Deleted</button>
+    <button class="tab" data-tab="stats">Stats</button>
   </div>
 
   <!-- Rooms -->
   <div class="panel active" id="panel-rooms">
-    <div class="section-header">
-      <h2>Chatrooms</h2>
-      <button class="btn btn-sm" onclick="loadRooms()">Refresh</button>
-    </div>
+    <div class="section-header"><h2>Chatrooms</h2><button class="btn btn-sm" onclick="loadRooms()">Refresh</button></div>
     <div style="overflow-x:auto">
-      <table>
-        <thead><tr><th>Name</th><th>Type</th><th>Members</th></tr></thead>
-        <tbody id="roomsBody"></tbody>
-      </table>
+      <table><thead><tr><th>Name</th><th>Type</th><th>Members</th></tr></thead><tbody id="roomsBody"></tbody></table>
     </div>
     <div class="empty" id="roomsEmpty">Loading...</div>
   </div>
 
   <!-- Permissions -->
   <div class="panel" id="panel-perms">
-    <div class="section-header">
-      <h2>User Permissions</h2>
-    </div>
-    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:16px">Select a room to manage member permissions.</p>
+    <div class="section-header"><h2>Permissions</h2></div>
     <div class="form-row">
-      <select id="permRoomSelect" onchange="loadPermRoom()">
-        <option value="">-- Select Room --</option>
-      </select>
+      <select id="permRoomSel" onchange="loadPermRoom()"><option value="">-- Room --</option></select>
     </div>
     <div style="overflow-x:auto">
-      <table id="permsTable" hidden>
-        <thead><tr><th>User</th><th>Permission</th><th>Change</th></tr></thead>
-        <tbody id="permsBody"></tbody>
-      </table>
+      <table id="permsTable" hidden><thead><tr><th>User</th><th>Grade</th><th>Change</th></tr></thead><tbody id="permsBody"></tbody></table>
     </div>
   </div>
 
-  <!-- Blacklist / Troll -->
+  <!-- Blacklist -->
   <div class="panel" id="panel-troll">
-    <div class="section-header">
-      <h2>Auto Reply Troll</h2>
-    </div>
-    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:16px">Target user's every message triggers a fake reply with the set message.</p>
+    <div class="section-header"><h2>Auto Reply Troll</h2></div>
+    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">This user's every message triggers an automatic fake reply.</p>
     <div class="form-row">
-      <select id="trollRoomSelect" onchange="loadTrollMembers()">
-        <option value="">-- Select Room --</option>
-      </select>
-      <select id="trollMemberSelect">
-        <option value="">-- Select User --</option>
-      </select>
+      <select id="trollRoomSel" onchange="loadTrollMembers()"><option value="">-- Room --</option></select>
+      <select id="trollMemSel"><option value="">-- User --</option></select>
       <input type="text" id="trollMsg" placeholder="Fake reply message" style="flex:1;min-width:120px">
       <button class="btn btn-accent btn-sm" onclick="addTroll()">Add</button>
     </div>
     <div style="overflow-x:auto">
-      <table>
-        <thead><tr><th>User</th><th>Message</th><th></th></tr></thead>
-        <tbody id="trollBody"></tbody>
-      </table>
+      <table><thead><tr><th>User</th><th>Message</th><th></th></tr></thead><tbody id="trollBody"></tbody></table>
     </div>
-    <div class="empty" id="trollEmpty" hidden>No targets set.</div>
+    <div class="empty" id="trollEmpty" hidden>No targets.</div>
+  </div>
+
+  <!-- Fake Reply -->
+  <div class="panel" id="panel-reply">
+    <div class="section-header"><h2>Fake Reply</h2></div>
+    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">Send a fake reply that looks like the target user said something.</p>
+    <div class="form-row">
+      <select id="replyRoomSel" onchange="loadReplyMembers()"><option value="">-- Room --</option></select>
+      <select id="replyMemSel"><option value="">-- Impersonate --</option></select>
+    </div>
+    <div class="form-row">
+      <input type="text" id="replyFake" placeholder="Fake original message (what they 'said')" style="flex:1;min-width:200px">
+    </div>
+    <div class="form-row">
+      <input type="text" id="replyMsg" placeholder="Bot's reply to that fake message" style="flex:1;min-width:200px">
+      <button class="btn btn-accent" onclick="sendFakeReply()">Send Reply</button>
+    </div>
   </div>
 
   <!-- Send -->
   <div class="panel" id="panel-send">
-    <div class="section-header">
-      <h2>Send Message</h2>
-    </div>
-    <div class="send-form">
-      <select id="sendRoomSelect">
-        <option value="">-- Select Room --</option>
-      </select>
-      <input type="text" id="sendMsg" placeholder="Message to send">
+    <div class="section-header"><h2>Send Message</h2></div>
+    <div class="form-row">
+      <select id="sendRoomSel"><option value="">-- Room --</option></select>
+      <input type="text" id="sendMsg" placeholder="Message" style="flex:1;min-width:150px">
       <button class="btn btn-accent" onclick="sendMessage()">Send</button>
     </div>
+  </div>
+
+  <!-- Message Logs -->
+  <div class="panel" id="panel-logs">
+    <div class="section-header"><h2>Message Log</h2><button class="btn btn-sm" onclick="loadLogs()">Refresh</button></div>
+    <div class="form-row">
+      <select id="logRoomSel" onchange="loadLogs()"><option value="0">All Rooms</option></select>
+      <select id="logLimit" onchange="loadLogs()">
+        <option value="30">30</option><option value="50" selected>50</option><option value="100">100</option><option value="200">200</option>
+      </select>
+    </div>
+    <div class="msg-list" id="logList"></div>
+    <div class="empty" id="logEmpty">Loading...</div>
+  </div>
+
+  <!-- Deleted -->
+  <div class="panel" id="panel-deleted">
+    <div class="section-header"><h2>Deleted Messages</h2><button class="btn btn-sm" onclick="loadDeleted()">Refresh</button></div>
+    <div class="form-row">
+      <select id="delRoomSel" onchange="loadDeleted()"><option value="0">All Rooms</option></select>
+    </div>
+    <div class="msg-list" id="delList"></div>
+    <div class="empty" id="delEmpty">Loading...</div>
+  </div>
+
+  <!-- Stats -->
+  <div class="panel" id="panel-stats">
+    <div class="section-header"><h2>Chat Stats</h2><button class="btn btn-sm" onclick="loadChatStats()">Refresh</button></div>
+    <div class="form-row">
+      <select id="statRoomSel" onchange="loadChatStats()"><option value="">-- Room --</option></select>
+    </div>
+    <div id="statsContent"></div>
   </div>
 </div>
 
@@ -424,222 +260,218 @@ select { cursor: pointer; }
 <script>
 const API = 'http://localhost:8080';
 let roomsData = [];
+let roomNames = {};
 
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-async function api(path, opts) {
-  try {
-    const r = await fetch(API + path, opts);
-    return await r.json();
-  } catch (e) {
-    return null;
-  }
-}
-
-function fmtUptime(s) {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return h + 'h ' + m + 'm';
-  return m + 'm ' + (s % 60) + 's';
-}
-
-function permBadge(level) {
-  const names = {0:'0',1:'I',2:'II',3:'III',4:'IV',5:'V'};
-  const cls = {0:'badge-0',1:'badge-i',2:'badge-ii',3:'badge-iii',4:'badge-iv',5:'badge-v'};
-  return '<span class="badge ' + (cls[level]||'badge-ii') + '">' + (names[level]||'II') + '</span>';
+function toast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+async function api(path, opts) { try { const r=await fetch(API+path,opts); return await r.json(); } catch(e) { return null; } }
+function fmtUp(s) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h>0?h+'h '+m+'m':m+'m '+(s%60)+'s'; }
+function fmtTime(ts) { const d=new Date(ts); return d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+function fmtDate(ts) { const d=new Date(ts); return d.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})+' '+fmtTime(ts); }
+function permBadge(l) {
+  const n={0:'0',1:'I',2:'II',3:'III',4:'IV',5:'V'};
+  const c={0:'badge-0',1:'badge-i',2:'badge-ii',3:'badge-iii',4:'badge-iv',5:'badge-v'};
+  return '<span class="badge '+(c[l]||'badge-ii')+'">'+(n[l]||'II')+'</span>';
 }
 
 async function loadStatus() {
-  const d = await api('/api/status');
-  const dot = document.getElementById('statusDot');
-  const info = document.getElementById('connInfo');
-  if (d && d.online) {
-    dot.classList.add('online');
-    info.textContent = 'localhost:8080';
-    info.className = 'connection-info connected';
-    document.getElementById('statUptime').textContent = fmtUptime(d.uptime);
-    document.getElementById('statRooms').textContent = d.rooms;
-    document.getElementById('statMsgs').textContent = d.messages.toLocaleString();
-    document.getElementById('statDel').textContent = d.deleted;
+  const d=await api('/api/status');
+  const dot=document.getElementById('statusDot'), info=document.getElementById('connInfo');
+  if(d&&d.online) {
+    dot.classList.add('online'); info.textContent='localhost:8080'; info.className='conn-info on';
+    document.getElementById('sUp').textContent=fmtUp(d.uptime);
+    document.getElementById('sRm').textContent=d.rooms;
+    document.getElementById('sMs').textContent=d.messages.toLocaleString();
+    document.getElementById('sDl').textContent=d.deleted;
   } else {
-    dot.classList.remove('online');
-    info.textContent = 'offline';
-    info.className = 'connection-info disconnected';
-    document.getElementById('statUptime').textContent = '--';
-    document.getElementById('statRooms').textContent = '--';
-    document.getElementById('statMsgs').textContent = '--';
-    document.getElementById('statDel').textContent = '--';
+    dot.classList.remove('online'); info.textContent='offline'; info.className='conn-info off';
+    ['sUp','sRm','sMs','sDl'].forEach(id=>document.getElementById(id).textContent='--');
   }
 }
 
 async function loadRooms() {
-  const d = await api('/api/rooms');
-  const body = document.getElementById('roomsBody');
-  const empty = document.getElementById('roomsEmpty');
-  if (!d || d.length === 0) {
-    body.innerHTML = '';
-    empty.hidden = false;
-    empty.textContent = d ? 'No rooms loaded yet.' : 'Bot offline.';
-    return;
-  }
-  empty.hidden = true;
-  roomsData = d;
-  body.innerHTML = d.map(r =>
-    '<tr><td style="color:var(--fg-bright);font-weight:500">' + esc(r.name) + '</td>'
-    + '<td><span class="mono" style="font-size:11px;color:var(--fg-dim)">' + esc(r.type) + '</span></td>'
-    + '<td>' + r.members + '</td></tr>'
+  const d=await api('/api/rooms');
+  const body=document.getElementById('roomsBody'), empty=document.getElementById('roomsEmpty');
+  if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; empty.textContent=d?'No rooms yet.':'Bot offline.'; return; }
+  empty.hidden=true; roomsData=d;
+  roomNames={};
+  d.forEach(r=>roomNames[r.chatId]=r.name);
+  body.innerHTML=d.map(r=>
+    '<tr><td style="color:var(--fg-bright);font-weight:500">'+esc(r.name)+'</td>'
+    +'<td><span class="mono" style="font-size:11px;color:var(--fg-dim)">'+esc(r.type)+'</span></td>'
+    +'<td>'+r.members+'</td></tr>'
   ).join('');
-  populateRoomSelects();
+  fillSelects();
 }
 
-function populateRoomSelects() {
-  const selects = ['permRoomSelect','trollRoomSelect','sendRoomSelect'];
-  selects.forEach(id => {
-    const sel = document.getElementById(id);
-    const val = sel.value;
-    sel.innerHTML = '<option value="">-- Select Room --</option>';
-    roomsData.forEach((r, i) => {
-      sel.innerHTML += '<option value="' + i + '">' + esc(r.name) + '</option>';
-    });
-    sel.value = val;
+function fillSelects() {
+  const ids=['permRoomSel','trollRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel'];
+  ids.forEach(id=>{
+    const sel=document.getElementById(id), val=sel.value;
+    const isAll=sel.querySelector('option[value="0"]');
+    sel.innerHTML=isAll?'<option value="0">All Rooms</option>':'<option value="">-- Room --</option>';
+    roomsData.forEach((r,i)=>{ sel.innerHTML+='<option value="'+i+'">'+esc(r.name)+'</option>'; });
+    sel.value=val;
   });
 }
 
+// Permissions
 function loadPermRoom() {
-  const idx = document.getElementById('permRoomSelect').value;
-  const table = document.getElementById('permsTable');
-  const body = document.getElementById('permsBody');
-  if (idx === '') { table.hidden = true; return; }
-  table.hidden = false;
-  const room = roomsData[idx];
-  if (!room) return;
-  body.innerHTML = room.memberList.map(m => {
-    const isOwner = m.perm === 5;
-    const selectHtml = isOwner ? '<span class="badge badge-v">V (Owner)</span>' :
-      '<select onchange="changePerm(' + m.userId + ', this.value)" style="padding:4px 8px;font-size:12px">'
-      + [0,1,2,3,4].map(l => '<option value="'+l+'"' + (m.perm===l?' selected':'') + '>' + ['0 무시','I 제한','II 일반','III 부관리','IV 관리자'][l] + '</option>').join('')
-      + '</select>';
-    return '<tr><td style="color:var(--fg-bright)">' + esc(m.nick) + '</td>'
-      + '<td>' + permBadge(m.perm) + '</td>'
-      + '<td>' + selectHtml + '</td></tr>';
+  const idx=document.getElementById('permRoomSel').value;
+  const tbl=document.getElementById('permsTable'), body=document.getElementById('permsBody');
+  if(idx==='') { tbl.hidden=true; return; }
+  tbl.hidden=false;
+  const room=roomsData[idx]; if(!room) return;
+  body.innerHTML=room.memberList.map(m=>{
+    const isO=m.perm===5;
+    const sel=isO?'<span class="badge badge-v">V Owner</span>'
+      :'<select onchange="changePerm('+m.userId+',this.value)" style="padding:4px 8px;font-size:12px">'
+      +[0,1,2,3,4].map(l=>'<option value="'+l+'"'+(m.perm===l?' selected':'')+'>'+['0 무시','I 제한','II 일반','III 부관리','IV 관리자'][l]+'</option>').join('')+'</select>';
+    return '<tr><td style="color:var(--fg-bright)">'+esc(m.nick)+'</td><td>'+permBadge(m.perm)+'</td><td>'+sel+'</td></tr>';
+  }).join('');
+}
+async function changePerm(uid,lv) {
+  const r=await api('/api/perms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid,level:+lv})});
+  if(r&&r.ok) { toast('Permission updated'); await loadRooms(); loadPermRoom(); } else toast(r?.error||'Failed');
+}
+
+// Troll
+function loadTrollMembers() {
+  const idx=document.getElementById('trollRoomSel').value, sel=document.getElementById('trollMemSel');
+  sel.innerHTML='<option value="">-- User --</option>';
+  if(idx==='') return;
+  const room=roomsData[idx]; if(!room) return;
+  room.memberList.forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+}
+async function loadTroll() {
+  const d=await api('/api/troll');
+  const body=document.getElementById('trollBody'), empty=document.getElementById('trollEmpty');
+  if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; return; }
+  empty.hidden=true;
+  body.innerHTML=d.map(t=>
+    '<tr><td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
+    +'<td class="mono" style="font-size:12px">'+esc(t.message)+'</td>'
+    +'<td><button class="btn btn-red btn-sm" onclick="removeTroll('+t.userId+')">Remove</button></td></tr>'
+  ).join('');
+}
+async function addTroll() {
+  const uid=document.getElementById('trollMemSel').value, msg=document.getElementById('trollMsg').value.trim();
+  if(!uid||!msg) { toast('Select user and enter message'); return; }
+  const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:msg})});
+  if(r&&r.ok) { toast('Target added'); document.getElementById('trollMsg').value=''; loadTroll(); }
+}
+async function removeTroll(uid) {
+  const r=await api('/api/troll',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid})});
+  if(r&&r.ok) { toast('Removed'); loadTroll(); }
+}
+
+// Fake Reply
+function loadReplyMembers() {
+  const idx=document.getElementById('replyRoomSel').value, sel=document.getElementById('replyMemSel');
+  sel.innerHTML='<option value="">-- Impersonate --</option>';
+  if(idx==='') return;
+  const room=roomsData[idx]; if(!room) return;
+  room.memberList.forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+}
+async function sendFakeReply() {
+  const idx=document.getElementById('replyRoomSel').value;
+  const uid=document.getElementById('replyMemSel').value;
+  const fake=document.getElementById('replyFake').value.trim();
+  const msg=document.getElementById('replyMsg').value.trim();
+  if(idx===''||!uid||!fake||!msg) { toast('Fill in all fields'); return; }
+  const room=roomsData[idx];
+  const r=await api('/api/fakereply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+    chatId:room.chatId, targetUserId:+uid, fakeOriginal:fake, replyMessage:msg
+  })});
+  if(r&&r.ok) {
+    toast('Fake reply sent to '+room.name);
+    document.getElementById('replyFake').value='';
+    document.getElementById('replyMsg').value='';
+  } else toast(r?.error||'Failed');
+}
+
+// Send
+async function sendMessage() {
+  const idx=document.getElementById('sendRoomSel').value, msg=document.getElementById('sendMsg').value.trim();
+  if(idx===''||!msg) { toast('Select room and enter message'); return; }
+  const room=roomsData[idx];
+  const r=await api('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,message:msg})});
+  if(r&&r.ok) { toast('Sent to '+room.name); document.getElementById('sendMsg').value=''; } else toast(r?.error||'Failed');
+}
+
+// Message Logs
+async function loadLogs() {
+  const idx=document.getElementById('logRoomSel').value;
+  const limit=document.getElementById('logLimit').value;
+  const chatId=idx!=='0'&&roomsData[idx]?roomsData[idx].chatId:0;
+  const d=await api('/api/messages?chatId='+chatId+'&limit='+limit);
+  const list=document.getElementById('logList'), empty=document.getElementById('logEmpty');
+  if(!d||d.length===0) { list.innerHTML=''; list.hidden=true; empty.hidden=false; empty.textContent=d?'No messages.':'Bot offline.'; return; }
+  empty.hidden=true; list.hidden=false;
+  list.innerHTML=d.map(m=>{
+    const rn=roomNames[m.chatId]||'';
+    return '<div class="msg-item">'
+      +'<span class="nick">'+esc(m.author)+'</span>'
+      +(chatId===0&&rn?'<span style="color:var(--fg-dim);font-size:11px;margin-left:6px">'+esc(rn)+'</span>':'')
+      +'<span class="time">'+fmtDate(m.timestamp)+'</span>'
+      +'<div class="text">'+esc(m.text)+'</div></div>';
   }).join('');
 }
 
-async function changePerm(userId, level) {
-  const r = await api('/api/perms', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({userId, level: parseInt(level)})
+// Deleted Messages
+async function loadDeleted() {
+  const idx=document.getElementById('delRoomSel').value;
+  const chatId=idx!=='0'&&roomsData[idx]?roomsData[idx].chatId:0;
+  const d=await api('/api/deleted?chatId='+chatId);
+  const list=document.getElementById('delList'), empty=document.getElementById('delEmpty');
+  if(!d||d.length===0) { list.innerHTML=''; list.hidden=true; empty.hidden=false; empty.textContent=d?'No deleted messages.':'Bot offline.'; return; }
+  empty.hidden=true; list.hidden=false;
+  list.innerHTML=d.map(m=>{
+    const rn=m.chatId?roomNames[m.chatId]||'':'';
+    return '<div class="msg-item deleted">'
+      +'<span class="nick">'+esc(m.author)+'</span>'
+      +(rn?'<span style="color:var(--fg-dim);font-size:11px;margin-left:6px">'+esc(rn)+'</span>':'')
+      +'<span class="time">'+fmtDate(m.timestamp)+'</span>'
+      +'<div class="text">'+esc(m.text)+'</div></div>';
+  }).join('');
+}
+
+// Chat Stats
+async function loadChatStats() {
+  const idx=document.getElementById('statRoomSel').value;
+  const cont=document.getElementById('statsContent');
+  if(idx==='') { cont.innerHTML='<div class="empty">Select a room.</div>'; return; }
+  const d=await api('/api/stats');
+  if(!d) { cont.innerHTML='<div class="empty">Bot offline.</div>'; return; }
+  const room=roomsData[idx]; if(!room) return;
+  const stats=d[room.chatId];
+  if(!stats||Object.keys(stats).length===0) { cont.innerHTML='<div class="empty">No stats for this room.</div>'; return; }
+  const sorted=Object.entries(stats).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,e)=>s+e[1],0);
+  const medals=['&#x1F947;','&#x1F948;','&#x1F949;'];
+  let html='<div style="margin-bottom:12px;color:var(--fg-dim);font-size:13px">Total: <strong style="color:var(--fg-bright)">'+total.toLocaleString()+'</strong> messages</div>';
+  html+='<table><thead><tr><th>#</th><th>User</th><th>Messages</th><th>%</th></tr></thead><tbody>';
+  sorted.slice(0,15).forEach((e,i)=>{
+    const pct=((e[1]/total)*100).toFixed(1);
+    const medal=i<3?medals[i]+' ':(i+1)+'. ';
+    const bar='<div style="background:var(--accent);height:4px;border-radius:2px;width:'+pct+'%;max-width:100%;margin-top:4px;opacity:.5"></div>';
+    html+='<tr><td>'+medal+'</td><td style="color:var(--fg-bright)">'+esc(e[0])+'</td><td class="mono">'+e[1].toLocaleString()+'</td><td class="mono" style="color:var(--fg-dim)">'+pct+'%'+bar+'</td></tr>';
   });
-  if (r && r.ok) {
-    toast('Permission updated');
-    await loadRooms();
-    loadPermRoom();
-  } else {
-    toast(r?.error || 'Failed');
-  }
-}
-
-function loadTrollMembers() {
-  const idx = document.getElementById('trollRoomSelect').value;
-  const sel = document.getElementById('trollMemberSelect');
-  sel.innerHTML = '<option value="">-- Select User --</option>';
-  if (idx === '') return;
-  const room = roomsData[idx];
-  if (!room) return;
-  room.memberList.forEach(m => {
-    sel.innerHTML += '<option value="' + m.userId + '">' + esc(m.nick) + '</option>';
-  });
-}
-
-async function loadTroll() {
-  const d = await api('/api/troll');
-  const body = document.getElementById('trollBody');
-  const empty = document.getElementById('trollEmpty');
-  if (!d || d.length === 0) {
-    body.innerHTML = '';
-    empty.hidden = false;
-    return;
-  }
-  empty.hidden = true;
-  body.innerHTML = d.map(t =>
-    '<tr><td style="color:var(--fg-bright)">' + esc(t.nick) + '</td>'
-    + '<td class="mono" style="font-size:12px">' + esc(t.message) + '</td>'
-    + '<td><button class="btn btn-red btn-sm" onclick="removeTroll(' + t.userId + ')">Remove</button></td></tr>'
-  ).join('');
-}
-
-async function addTroll() {
-  const uid = document.getElementById('trollMemberSelect').value;
-  const msg = document.getElementById('trollMsg').value.trim();
-  if (!uid || !msg) { toast('Select user and enter message'); return; }
-  const r = await api('/api/troll', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({userId: parseInt(uid), message: msg})
-  });
-  if (r && r.ok) {
-    toast('Target added');
-    document.getElementById('trollMsg').value = '';
-    loadTroll();
-  }
-}
-
-async function removeTroll(userId) {
-  const r = await api('/api/troll', {
-    method: 'DELETE',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({userId})
-  });
-  if (r && r.ok) { toast('Target removed'); loadTroll(); }
-}
-
-async function sendMessage() {
-  const idx = document.getElementById('sendRoomSelect').value;
-  const msg = document.getElementById('sendMsg').value.trim();
-  if (idx === '' || !msg) { toast('Select room and enter message'); return; }
-  const room = roomsData[idx];
-  const r = await api('/api/send', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({chatId: room.chatId, message: msg})
-  });
-  if (r && r.ok) {
-    toast('Sent to ' + room.name);
-    document.getElementById('sendMsg').value = '';
-  } else {
-    toast(r?.error || 'Failed');
-  }
-}
-
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
+  html+='</tbody></table>';
+  cont.innerHTML=html;
 }
 
 // Tab switching
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
     tab.classList.add('active');
-    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
   });
 });
 
-// Init
-async function init() {
-  await loadStatus();
-  await loadRooms();
-  await loadTroll();
-  setInterval(loadStatus, 5000);
-}
+async function init() { await loadStatus(); await loadRooms(); await loadTroll(); setInterval(loadStatus,5000); }
 init();
 </script>
 </body>
