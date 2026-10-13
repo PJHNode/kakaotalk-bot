@@ -279,20 +279,37 @@ textarea { resize: vertical; min-height: 36px; }
     </div>
   </div>
 
-  <!-- Blacklist -->
+  <!-- Blacklist / Troll -->
   <div class="panel" id="panel-troll">
-    <div class="section-header"><h2>Auto Reply Troll</h2></div>
-    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">This user's every message triggers an automatic fake reply.</p>
+    <div class="section-header"><h2>Troll Mode</h2></div>
+    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">AI: AI generates dynamic troll replies. Fixed: same fake-reply every time.</p>
     <div class="form-row">
       <select id="trollRoomSel" onchange="loadTrollMembers()"><option value="">-- Room --</option></select>
       <select id="trollMemSel"><option value="">-- User --</option></select>
-      <input type="text" id="trollMsg" placeholder="Fake reply message" style="flex:1;min-width:120px">
+      <label style="display:flex;align-items:center;gap:6px;color:var(--fg-dim);font-size:12px;white-space:nowrap">
+        <input type="checkbox" id="trollAI" onchange="document.getElementById('trollMsg').disabled=this.checked;if(this.checked)document.getElementById('trollMsg').value='AI mode'"> AI Mode
+      </label>
+      <input type="text" id="trollMsg" placeholder="Fixed reply message" style="flex:1;min-width:120px">
       <button class="btn btn-accent btn-sm" onclick="addTroll()">Add</button>
     </div>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>User</th><th>Message</th><th></th></tr></thead><tbody id="trollBody"></tbody></table>
+      <table><thead><tr><th>User</th><th>Mode</th><th></th></tr></thead><tbody id="trollBody"></tbody></table>
     </div>
     <div class="empty" id="trollEmpty" hidden>No targets.</div>
+
+    <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+      <div class="section-header"><h2>Auto Demote</h2></div>
+      <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">Target's permission drops 1 level every ~4 messages in the selected room.</p>
+      <div class="form-row">
+        <select id="demoteRoomSel" onchange="loadDemoteMembers()"><option value="">-- Room --</option></select>
+        <select id="demoteMemSel"><option value="">-- Target --</option></select>
+        <button class="btn btn-accent btn-sm" onclick="addDemote()">Start</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table><thead><tr><th>Room</th><th>Target</th><th>Current Perm</th><th>Next in</th><th></th></tr></thead><tbody id="demoteBody"></tbody></table>
+      </div>
+      <div class="empty" id="demoteEmpty" hidden>No auto-demote active.</div>
+    </div>
   </div>
 
   <!-- Fake Reply -->
@@ -416,7 +433,7 @@ async function loadRooms() {
 }
 
 function fillSelects() {
-  const ids=['permRoomSel','trollRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel','chatRoomSel'];
+  const ids=['permRoomSel','trollRoomSel','demoteRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel','chatRoomSel'];
   ids.forEach(id=>{
     const sel=document.getElementById(id), val=sel.value;
     const isAll=sel.querySelector('option[value="0"]');
@@ -459,21 +476,57 @@ async function loadTroll() {
   const body=document.getElementById('trollBody'), empty=document.getElementById('trollEmpty');
   if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; return; }
   empty.hidden=true;
-  body.innerHTML=d.map(t=>
-    '<tr><td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
-    +'<td class="mono" style="font-size:12px">'+esc(t.message)+'</td>'
-    +'<td><button class="btn btn-red btn-sm" onclick="removeTroll('+t.userId+')">Remove</button></td></tr>'
-  ).join('');
+  body.innerHTML=d.map(t=>{
+    const mode=t.isAI?'<span style="color:var(--accent)">AI</span>':'<span class="mono" style="font-size:12px">'+esc(t.message)+'</span>';
+    return '<tr><td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
+      +'<td>'+mode+'</td>'
+      +'<td><button class="btn btn-red btn-sm" onclick="removeTroll('+t.userId+')">Remove</button></td></tr>';
+  }).join('');
 }
 async function addTroll() {
-  const uid=document.getElementById('trollMemSel').value, msg=document.getElementById('trollMsg').value.trim();
-  if(!uid||!msg) { toast('Select user and enter message'); return; }
+  const uid=document.getElementById('trollMemSel').value;
+  const isAI=document.getElementById('trollAI').checked;
+  const msg=isAI?'__AI__':document.getElementById('trollMsg').value.trim();
+  if(!uid||(! isAI&&!msg)) { toast('Select user and enter message (or enable AI)'); return; }
   const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:msg})});
-  if(r&&r.ok) { toast('Target added'); document.getElementById('trollMsg').value=''; loadTroll(); }
+  if(r&&r.ok) { toast('Target added'); document.getElementById('trollMsg').value=''; document.getElementById('trollAI').checked=false; document.getElementById('trollMsg').disabled=false; loadTroll(); }
 }
 async function removeTroll(uid) {
   const r=await api('/api/troll',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid})});
   if(r&&r.ok) { toast('Removed'); loadTroll(); }
+}
+
+// Demote
+function loadDemoteMembers() {
+  const idx=document.getElementById('demoteRoomSel').value, sel=document.getElementById('demoteMemSel');
+  sel.innerHTML='<option value="">-- Target --</option>';
+  if(idx==='') return;
+  const room=roomsData[idx]; if(!room) return;
+  room.memberList.forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+}
+async function loadDemote() {
+  const d=await api('/api/demote');
+  const body=document.getElementById('demoteBody'), empty=document.getElementById('demoteEmpty');
+  if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; return; }
+  empty.hidden=true;
+  body.innerHTML=d.map(t=>
+    '<tr><td style="color:var(--fg-bright)">'+esc(t.roomName)+'</td>'
+    +'<td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
+    +'<td>'+esc(t.currentPermName)+'</td>'
+    +'<td class="mono">'+t.remaining+' msgs</td>'
+    +'<td><button class="btn btn-red btn-sm" onclick="removeDemote('+t.chatId+')">Stop</button></td></tr>'
+  ).join('');
+}
+async function addDemote() {
+  const idx=document.getElementById('demoteRoomSel').value, uid=document.getElementById('demoteMemSel').value;
+  if(idx===''||!uid) { toast('Select room and target'); return; }
+  const cid=roomsData[idx].chatId;
+  const r=await api('/api/demote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid,userId:+uid})});
+  if(r&&r.ok) { toast('Auto-demote started'); loadDemote(); } else toast(r?.error||'Failed');
+}
+async function removeDemote(cid) {
+  const r=await api('/api/demote',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid})});
+  if(r&&r.ok) { toast('Auto-demote stopped'); loadDemote(); }
 }
 
 // Fake Reply
@@ -726,7 +779,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
   });
 });
 
-async function init() { await loadStatus(); await loadRooms(); await loadTroll(); setInterval(loadStatus,5000); startChatAuto(); }
+async function init() { await loadStatus(); await loadRooms(); await loadTroll(); await loadDemote(); setInterval(loadStatus,5000); startChatAuto(); }
 init();
 </script>
 </body>
