@@ -121,6 +121,26 @@ textarea { resize: vertical; min-height: 36px; }
 .msg-item .text { margin-top: 2px; color: var(--fg-bright); word-break: break-word; }
 .msg-item.deleted { border-left: 3px solid var(--red); }
 
+/* KakaoTalk-style chat view */
+.kk-view { max-height: 600px; overflow-y: auto; border: 1px solid var(--border); border-radius: 12px; background: #15151f; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.kk-row { display: flex; flex-direction: column; max-width: 78%; }
+.kk-row.me { align-self: flex-end; align-items: flex-end; }
+.kk-row.other { align-self: flex-start; align-items: flex-start; }
+.kk-nick { font-size: 11px; color: var(--fg-dim); margin: 0 4px 3px; }
+.kk-line { display: flex; align-items: flex-end; gap: 6px; }
+.kk-row.me .kk-line { flex-direction: row-reverse; }
+.kk-bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.45; word-break: break-word; max-width: 100%; }
+.kk-row.other .kk-bubble { background: #2a2a3d; color: var(--fg-bright); border-top-left-radius: 4px; }
+.kk-row.me .kk-bubble { background: #3d5afe; color: #fff; border-top-right-radius: 4px; }
+.kk-bubble.deleted { background: transparent; border: 1px dashed var(--red); color: var(--red); font-style: italic; }
+.kk-deleted-tag { font-size: 10px; color: var(--red); font-weight: 600; margin-bottom: 3px; }
+.kk-orig { margin-top: 4px; font-size: 12px; color: var(--fg); background: rgba(245,91,122,.08); border-left: 2px solid var(--red); padding: 4px 8px; border-radius: 4px; font-style: normal; }
+.kk-meta { display: flex; flex-direction: column; font-size: 10px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; }
+.kk-row.me .kk-meta { align-items: flex-end; }
+.kk-read { color: var(--yellow); cursor: help; }
+.kk-read.allread { color: var(--green); }
+.kk-time { white-space: nowrap; }
+
 /* Toast */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); color: var(--fg-bright); padding: 10px 20px; border-radius: 8px; font-size: 13px; opacity: 0; transition: transform .3s, opacity .3s; z-index: 100; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
@@ -153,6 +173,7 @@ textarea { resize: vertical; min-height: 36px; }
 
   <div class="tabs">
     <button class="tab active" data-tab="rooms">Rooms</button>
+    <button class="tab" data-tab="chat">Chat</button>
     <button class="tab" data-tab="perms">Permissions</button>
     <button class="tab" data-tab="aichat">AI Mode</button>
     <button class="tab" data-tab="troll">Blacklist</button>
@@ -170,6 +191,25 @@ textarea { resize: vertical; min-height: 36px; }
       <table><thead><tr><th>Name</th><th>Type</th><th>Members</th></tr></thead><tbody id="roomsBody"></tbody></table>
     </div>
     <div class="empty" id="roomsEmpty">Loading...</div>
+  </div>
+
+  <!-- Chat -->
+  <div class="panel" id="panel-chat">
+    <div class="section-header">
+      <h2 id="chatTitle">Chat</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <label style="font-size:12px;color:var(--fg-dim);display:flex;align-items:center;gap:4px"><input type="checkbox" id="chatAuto" checked style="width:auto"> auto</label>
+        <button class="btn btn-sm" onclick="loadChat()">Refresh</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <select id="chatRoomSel" onchange="loadChat()"><option value="">-- Room --</option></select>
+      <select id="chatLimit" onchange="loadChat()">
+        <option value="30">30</option><option value="50" selected>50</option><option value="100">100</option>
+      </select>
+    </div>
+    <div id="kkView" class="kk-view"></div>
+    <div class="empty" id="chatEmpty">Select a room.</div>
   </div>
 
   <!-- Permissions -->
@@ -376,7 +416,7 @@ async function loadRooms() {
 }
 
 function fillSelects() {
-  const ids=['permRoomSel','trollRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel'];
+  const ids=['permRoomSel','trollRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel','chatRoomSel'];
   ids.forEach(id=>{
     const sel=document.getElementById(id), val=sel.value;
     const isAll=sel.querySelector('option[value="0"]');
@@ -622,6 +662,58 @@ async function delMemory(i) {
   if (r && r.ok) { toast('기억 삭제됨'); await loadAi(); } else toast(r?.error||'Failed');
 }
 
+// KakaoTalk-style chat view
+let chatTimer = null;
+async function loadChat() {
+  const idx = document.getElementById('chatRoomSel').value;
+  const view = document.getElementById('kkView');
+  const empty = document.getElementById('chatEmpty');
+  if (idx === '') { view.innerHTML=''; view.hidden=true; empty.hidden=false; empty.textContent='Select a room.'; return; }
+  const room = roomsData[idx];
+  const limit = document.getElementById('chatLimit').value;
+  const d = await api('/api/chatview?chatId='+room.chatId+'&limit='+limit);
+  if (!d || !d.messages) { view.hidden=true; empty.hidden=false; empty.textContent = d?'No messages.':'Bot offline.'; return; }
+  document.getElementById('chatTitle').textContent = d.roomName || 'Chat';
+  if (d.messages.length === 0) { view.innerHTML=''; view.hidden=true; empty.hidden=false; empty.textContent='No messages yet.'; return; }
+  empty.hidden = true; view.hidden = false;
+  // 스크롤 위치 유지 여부: 거의 맨 아래면 자동 스크롤
+  const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 60;
+  view.innerHTML = d.messages.map(m => {
+    const side = m.isBot ? 'me' : 'other';
+    const time = new Date(m.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    let bubble;
+    if (m.deleted) {
+      bubble = '<div class="kk-deleted-tag">🚫 삭제된 메시지</div>'
+        + '<div class="kk-bubble deleted">삭제됨'
+        + '<div class="kk-orig">원본: '+esc(m.text)+'</div></div>';
+    } else {
+      bubble = '<div class="kk-bubble">'+esc(m.text)+'</div>';
+    }
+    // 읽음 현황
+    let readInfo = '';
+    const totalOthers = m.readCount + m.unreadCount;
+    if (totalOthers > 0) {
+      const allread = m.unreadCount === 0;
+      const title = (allread ? '모두 읽음' : '안읽음: '+m.unreaders.join(', '))
+        + (m.readCount>0 ? ' | 읽음: '+m.readers.join(', ') : '');
+      // 카톡은 안읽은 수를 노란 숫자로 표시
+      const label = allread ? '✓읽음' : m.unreadCount;
+      readInfo = '<span class="kk-read'+(allread?' allread':'')+'" title="'+esc(title)+'">'+label+'</span>';
+    }
+    return '<div class="kk-row '+side+'">'
+      + (side==='other' ? '<div class="kk-nick">'+esc(m.author)+'</div>' : '')
+      + '<div class="kk-line">'
+      + bubble
+      + '<div class="kk-meta">'+readInfo+'<span class="kk-time">'+time+'</span></div>'
+      + '</div></div>';
+  }).join('');
+  if (atBottom) view.scrollTop = view.scrollHeight;
+}
+function startChatAuto() {
+  if (chatTimer) clearInterval(chatTimer);
+  chatTimer = setInterval(()=>{ if (document.getElementById('chatAuto').checked && document.getElementById('panel-chat').classList.contains('active')) loadChat(); }, 4000);
+}
+
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab=>{
   tab.addEventListener('click',()=>{
@@ -630,10 +722,11 @@ document.querySelectorAll('.tab').forEach(tab=>{
     tab.classList.add('active');
     document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'aichat') loadAi();
+    if (tab.dataset.tab === 'chat') { loadChat(); const v=document.getElementById('kkView'); setTimeout(()=>{v.scrollTop=v.scrollHeight;},50); }
   });
 });
 
-async function init() { await loadStatus(); await loadRooms(); await loadTroll(); setInterval(loadStatus,5000); }
+async function init() { await loadStatus(); await loadRooms(); await loadTroll(); setInterval(loadStatus,5000); startChatAuto(); }
 init();
 </script>
 </body>
