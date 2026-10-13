@@ -208,6 +208,34 @@ textarea { resize: vertical; min-height: 36px; }
         <textarea id="aiPersona" placeholder="e.g. 까칠하지만 정 있는 츤데레 말투로 반말로 대화해" style="width:100%;min-height:80px"></textarea>
         <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="saveAiPersona()">Save Personality</button></div>
       </div>
+
+      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">눈치껏 참여 (proactive join): <span id="aiProVal" class="mono" style="color:var(--accent)">0%</span></label>
+          <input type="range" id="aiProactive" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('aiProVal').textContent=this.value+'%'" onchange="saveAiTune()">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">온도 (창의성): <span id="aiTempVal" class="mono" style="color:var(--accent)">0.9</span></label>
+          <input type="range" id="aiTemp" min="0" max="15" value="9" style="width:100%" oninput="document.getElementById('aiTempVal').textContent=(this.value/10).toFixed(1)" onchange="saveAiTune()">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">응답 길이</label>
+          <select id="aiLen" onchange="saveAiTune()" style="width:100%">
+            <option value="80">짧게</option>
+            <option value="200" selected>보통</option>
+            <option value="500">길게</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:20px">
+        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Memory (봇이 기억하는 사실)</label>
+        <div class="form-row">
+          <input type="text" id="aiMemInput" placeholder="예: 철수는 치킨을 좋아함" style="flex:1;min-width:150px">
+          <button class="btn btn-accent btn-sm" onclick="addMemory()">추가</button>
+        </div>
+        <div id="aiMemList"></div>
+      </div>
     </div>
   </div>
 
@@ -528,12 +556,33 @@ function loadAiRoom() {
   if (idx === '') { panel.hidden = true; return; }
   panel.hidden = false;
   const room = roomsData[idx]; if (!room) return;
-  const on = aiData.rooms && aiData.rooms[room.chatId] === true;
+  const cid = room.chatId;
+  const on = aiData.rooms && aiData.rooms[cid] === true;
   const st = document.getElementById('aiStatus');
   st.textContent = on ? 'ON' : 'OFF';
   st.className = 'badge ' + (on ? 'badge-iv' : 'badge-0');
   document.getElementById('aiToggleBtn').textContent = on ? 'Turn OFF' : 'Turn ON';
-  document.getElementById('aiPersona').value = (aiData.persona && aiData.persona[room.chatId]) || '';
+  document.getElementById('aiPersona').value = (aiData.persona && aiData.persona[cid]) || '';
+  // tuning
+  const pro = (aiData.proactive && aiData.proactive[cid]) || 0;
+  document.getElementById('aiProactive').value = pro;
+  document.getElementById('aiProVal').textContent = pro + '%';
+  const temp = (aiData.temp && aiData.temp[cid] != null) ? aiData.temp[cid] : 0.9;
+  document.getElementById('aiTemp').value = Math.round(temp*10);
+  document.getElementById('aiTempVal').textContent = temp.toFixed(1);
+  const len = (aiData.len && aiData.len[cid]) || 200;
+  document.getElementById('aiLen').value = String(len);
+  renderMemory(cid);
+}
+function renderMemory(cid) {
+  const list = (aiData.memory && aiData.memory[cid]) || [];
+  const el = document.getElementById('aiMemList');
+  if (list.length === 0) { el.innerHTML = '<div style="color:var(--fg-dim);font-size:12px;padding:8px 0">기억하는 게 없어요.</div>'; return; }
+  el.innerHTML = list.map((m,i) =>
+    '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+    + '<span style="flex:1;font-size:13px">'+esc(m)+'</span>'
+    + '<button class="btn btn-red btn-sm" onclick="delMemory('+i+')">×</button></div>'
+  ).join('');
 }
 async function toggleAi() {
   const idx = document.getElementById('aiRoomSel').value;
@@ -548,6 +597,29 @@ async function saveAiPersona() {
   const persona = document.getElementById('aiPersona').value.trim();
   const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,persona})});
   if (r && r.ok) { toast('Personality saved'); await loadAi(); } else toast(r?.error||'Failed');
+}
+async function saveAiTune() {
+  const idx = document.getElementById('aiRoomSel').value;
+  const room = roomsData[idx]; if (!room) return;
+  const proactive = parseInt(document.getElementById('aiProactive').value);
+  const temp = parseInt(document.getElementById('aiTemp').value)/10;
+  const len = parseInt(document.getElementById('aiLen').value);
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,proactive,temp,len})});
+  if (r && r.ok) { toast('Saved'); await loadAi(); } else toast(r?.error||'Failed');
+}
+async function addMemory() {
+  const idx = document.getElementById('aiRoomSel').value;
+  const room = roomsData[idx]; if (!room) return;
+  const fact = document.getElementById('aiMemInput').value.trim();
+  if (!fact) return;
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,addMemory:fact})});
+  if (r && r.ok) { toast('기억 추가됨'); document.getElementById('aiMemInput').value=''; await loadAi(); } else toast(r?.error||'Failed');
+}
+async function delMemory(i) {
+  const idx = document.getElementById('aiRoomSel').value;
+  const room = roomsData[idx]; if (!room) return;
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,delMemory:i})});
+  if (r && r.ok) { toast('기억 삭제됨'); await loadAi(); } else toast(r?.error||'Failed');
 }
 
 // Tab switching
