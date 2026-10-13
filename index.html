@@ -200,7 +200,11 @@ textarea { resize: vertical; min-height: 36px; }
         <button class="btn btn-accent btn-sm" id="aiToggleBtn" onclick="toggleAi()">Turn ON</button>
       </div>
       <div style="margin-top:16px">
-        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Personality (leave empty for default)</label>
+        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Preset</label>
+        <div class="form-row" style="margin-bottom:12px">
+          <select id="aiPreset" onchange="applyPreset()" style="flex:1;min-width:150px"><option value="">-- Choose a preset --</option></select>
+        </div>
+        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Personality (edit freely, empty = default)</label>
         <textarea id="aiPersona" placeholder="e.g. 까칠하지만 정 있는 츤데레 말투로 반말로 대화해" style="width:100%;min-height:80px"></textarea>
         <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="saveAiPersona()">Save Personality</button></div>
       </div>
@@ -501,13 +505,22 @@ async function loadChatStats() {
 }
 
 // AI Mode
-let aiData = {rooms:{}, persona:{}, hasKey:false};
+let aiData = {rooms:{}, persona:{}, hasKey:false, presets:[]};
 async function loadAi() {
   const d = await api('/api/autochat');
   if (!d) return;
   aiData = d;
   document.getElementById('aiKeyWarn').hidden = !!d.hasKey;
+  const ps = document.getElementById('aiPreset');
+  ps.innerHTML = '<option value="">-- Choose a preset --</option>';
+  (aiData.presets||[]).forEach((p,i)=>{ ps.innerHTML += '<option value="'+i+'">'+esc(p.name)+'</option>'; });
   loadAiRoom();
+}
+function applyPreset() {
+  const i = document.getElementById('aiPreset').value;
+  if (i === '') return;
+  const p = (aiData.presets||[])[i];
+  if (p) document.getElementById('aiPersona').value = p.prompt;
 }
 function loadAiRoom() {
   const idx = document.getElementById('aiRoomSel').value;
