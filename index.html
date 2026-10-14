@@ -409,6 +409,13 @@ textarea { resize: vertical; min-height: 36px; }
               <input type="number" min="0" id="limDefUserDay" class="lim-in"> <span>/하루</span>
               <button class="btn btn-sm" onclick="saveLimit('defaultUser')">저장</button></div>
           </div>
+          <div class="lim-box">
+            <div class="field-label">봇 전송 제한 <span style="opacity:.8">· 카톡 스팸 제재 방지 · 모든 방 공통(방마다 따로 셈)</span></div>
+            <div class="lim-row">10초에
+              <input type="number" min="0" max="100" id="limSend" class="lim-in"> 개까지 (0 = 끔)
+              <button class="btn btn-sm" onclick="saveSendLimit()">저장</button></div>
+            <div class="lim-row" id="limSendDropped"></div>
+          </div>
         </div>
         <div class="field-label" style="margin-top:14px">사람별 (이 방 멤버)</div>
         <div id="limUsers"></div>
@@ -783,6 +790,8 @@ async function loadLimits() {
   const setv = (id, v) => { const e = document.getElementById(id); if (document.activeElement !== e) e.value = v; };
   setv('limDefRoomMin', d.defaultRoom.perMin); setv('limDefRoomDay', d.defaultRoom.perDay);
   setv('limDefUserMin', d.defaultUser.perMin); setv('limDefUserDay', d.defaultUser.perDay);
+  setv('limSend', d.sendPer10s);
+  document.getElementById('limSendDropped').textContent = '봇 켠 뒤 제한으로 안 보낸 메시지: ' + (d.sendDropped || 0) + '개 · 대시보드에서 직접 보내는 건 제한 없음';
   const r = d.room || {};
   const rl = r.override || d.defaultRoom;
   setv('limRoomMin', rl.perMin); setv('limRoomDay', rl.perDay);
@@ -812,6 +821,7 @@ function saveLimit(scope) {
   if (scope === 'defaultRoom') return postLimit({scope, perMin: numv('limDefRoomMin'), perDay: numv('limDefRoomDay')});
   if (scope === 'defaultUser') return postLimit({scope, perMin: numv('limDefUserMin'), perDay: numv('limDefUserDay')});
 }
+function saveSendLimit() { postLimit({scope:'send', per10s: numv('limSend')}); }
 function saveUserLimit(uid) { postLimit({scope:'user', id: uid, perMin: numv('lu-m-'+uid), perDay: numv('lu-d-'+uid)}); }
 function clearLimit(scope, uid) {
   const room = aiRoom();
