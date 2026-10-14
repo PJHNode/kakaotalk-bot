@@ -170,6 +170,17 @@ textarea { resize: vertical; min-height: 36px; }
 .ubar > div { height: 100%; background: var(--green); transition: width .3s; }
 .ubar.warn > div { background: var(--yellow); }
 .ubar.bad > div { background: var(--red); }
+.person { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.person:last-child { border-bottom: none; }
+.person-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.person-head .pn { color: var(--fg-bright); font-weight: 600; font-size: 13px; }
+.person-head .pc { font-size: 11px; color: var(--fg-dim); }
+.facts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.fact { display: inline-flex; align-items: center; gap: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 3px 4px 3px 10px; font-size: 12px; color: var(--fg); }
+.fact button { background: none; border: none; color: var(--fg-dim); cursor: pointer; font-size: 13px; padding: 0 4px; line-height: 1; }
+.fact button:hover { color: var(--red); }
+.person-add { display: flex; gap: 6px; }
+.person-add input { flex: 1; min-width: 0; padding: 5px 10px; font-size: 12px; }
 .gem-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
 .gem-row:last-child { border-bottom: none; }
 .gem-row .n { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; }
@@ -377,10 +388,17 @@ textarea { resize: vertical; min-height: 36px; }
       <!-- 4. 기억 -->
       <div class="card">
         <div class="card-head">
-          <h3>기억 <span class="hint">AI가 대화 보고 스스로 저장 (채팅엔 안 보임)</span></h3>
+          <h3>사람별 기억 <span class="hint">AI가 대화 보고 스스로 저장 · 방이 달라도 같은 사람이면 공유</span></h3>
+        </div>
+        <div id="peopleList"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>방 기억 <span class="hint">특정 사람이 아닌 이 방 전체에 대한 것</span></h3>
         </div>
         <div class="form-row">
-          <input type="text" id="aiMemInput" placeholder="직접 추가: 예) 철수는 치킨을 좋아함" style="flex:1;min-width:150px">
+          <input type="text" id="aiMemInput" placeholder="직접 추가: 예) 이 방은 다 같은 반 친구들" style="flex:1;min-width:150px">
           <button class="btn btn-accent btn-sm" onclick="addMemory()">추가</button>
         </div>
         <div id="aiMemList"></div>
@@ -685,6 +703,34 @@ async function removeDemote(cid) {
   if(r&&r.ok) { toast('자동 강등 중지'); loadDemote(); }
 }
 
+// 사람별 기억
+async function loadPeople() {
+  const room = aiRoom(); if (!room) return;
+  const el = document.getElementById('peopleList');
+  const d = await api('/api/profiles?chatId=' + room.chatId);
+  if (!d) { el.innerHTML = emptyLine('Bot offline'); return; }
+  if (d.length === 0) { el.innerHTML = emptyLine('멤버 없음'); return; }
+  d.sort((a, b) => b.facts.length - a.facts.length || a.nick.localeCompare(b.nick));
+  el.innerHTML = d.map(p =>
+    '<div class="person"><div class="person-head"><span class="pn">'+esc(p.nick)+'</span>'
+    + '<span class="pc">'+(p.facts.length ? p.facts.length+'개' : '아직 없음')+'</span></div>'
+    + (p.facts.length ? '<div class="facts">' + p.facts.map((f, i) =>
+        '<span class="fact">'+esc(f)+'<button title="삭제" onclick="delPersonFact('+p.userId+','+i+')">×</button></span>').join('') + '</div>' : '')
+    + '<div class="person-add"><input id="pf-'+p.userId+'" placeholder="'+esc(p.nick)+'에 대해 추가" onkeydown="if(event.key===\'Enter\'&&!event.isComposing)addPersonFact('+p.userId+')">'
+    + '<button class="btn btn-sm" onclick="addPersonFact('+p.userId+')">추가</button></div></div>'
+  ).join('');
+}
+async function addPersonFact(uid) {
+  const inp = document.getElementById('pf-' + uid);
+  const fact = inp.value.trim(); if (!fact) return;
+  const r = await api('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId: uid, add: fact})});
+  if (r && r.ok) { toast('기억 추가됨'); loadPeople(); } else toast('Failed');
+}
+async function delPersonFact(uid, i) {
+  const r = await api('/api/profiles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId: uid, del: i})});
+  if (r && r.ok) { toast('기억 삭제됨'); loadPeople(); } else toast('Failed');
+}
+
 // AI 사용량
 function hhmm(ts) { return new Date(ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
 async function loadUsage() {
@@ -880,6 +926,7 @@ function loadAiRoom() {
   fillMemberSel('aiDemoteSel', room);
   loadTroll();
   loadDemote();
+  loadPeople();
   const cid = room.chatId;
   const on = aiData.rooms && aiData.rooms[cid] === true;
   const st = document.getElementById('aiStatus');
