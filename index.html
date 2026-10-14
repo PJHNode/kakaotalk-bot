@@ -25,6 +25,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 body {
   background: var(--bg);
   color: var(--fg);
@@ -178,6 +179,12 @@ textarea { resize: vertical; min-height: 36px; }
 
 /* Toast */
 .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--surface2); border: 1px solid var(--border); color: var(--fg-bright); padding: 10px 20px; border-radius: 8px; font-size: 13px; opacity: 0; transition: transform .3s, opacity .3s; z-index: 100; pointer-events: none; }
+.auth-modal { position: fixed; inset: 0; background: rgba(5,5,10,.75); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+.auth-modal[hidden] { display: none; }
+.auth-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 12px; }
+.auth-box h3 { font-family: 'JetBrains Mono', monospace; color: var(--fg-bright); font-size: 16px; }
+.auth-box p { font-size: 13px; color: var(--fg); }
+.auth-box .auth-hint { font-size: 11px; color: var(--fg-dim); }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
 @media (max-width: 600px) {
@@ -196,6 +203,7 @@ textarea { resize: vertical; min-height: 36px; }
     <div style="display:flex;align-items:center;gap:8px">
       <span class="conn-info off" id="connInfo">connecting...</span>
       <button class="btn btn-sm" onclick="changeApi()" title="Change API URL">API</button>
+      <button class="btn btn-sm" onclick="logout()" title="저장된 비밀번호 지우기">Logout</button>
     </div>
   </header>
 
@@ -454,6 +462,19 @@ textarea { resize: vertical; min-height: 36px; }
 
 <div class="toast" id="toast"></div>
 
+<div id="authModal" class="auth-modal" hidden>
+  <form id="authForm" class="auth-box" onsubmit="return false">
+    <h3>🔒 PJH_BOT</h3>
+    <p id="authMsg">봇 대시보드 비밀번호를 입력하세요.</p>
+    <input id="authInput" type="password" autocomplete="current-password" placeholder="비밀번호" style="width:100%">
+    <p class="auth-hint">봇 폴더의 <span class="mono">data/dashboard_password.txt</span>에 있어요.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" class="btn" id="authCancel">취소</button>
+      <button type="submit" class="btn btn-accent">확인</button>
+    </div>
+  </form>
+</div>
+
 <script>
 let API = location.hostname === 'pjhnode.github.io' ? 'http://localhost:8080' : location.origin;
 try { const saved = localStorage.getItem('pjhbot_api'); if (saved) API = saved; } catch(e){}
@@ -472,7 +493,62 @@ function changeApi() {
 
 function toast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
-async function api(path, opts) { try { const r=await fetch(API+path,opts); return await r.json(); } catch(e) { return null; } }
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('pjhbot_token') || ''; } catch(e){}
+let authWait = null, authCanceled = false;
+function relogin() { authCanceled = false; loadStatus(); loadRooms(); }
+async function api(path, opts) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const o = Object.assign({}, opts || {});
+      o.headers = Object.assign({}, (opts && opts.headers) || {}, { 'X-Bot-Token': TOKEN });
+      const r = await fetch(API + path, o);
+      if (r.status === 401) {
+        if (authCanceled || !(await askPassword(attempt > 0))) { authCanceled = true; return null; }
+        continue;
+      }
+      if (r.status === 429) { const j = await r.json().catch(()=>({})); setLocked(j.retryAfterSec); return null; }
+      return await r.json();
+    } catch (e) { return null; }
+  }
+  return null;
+}
+// 동시에 여러 요청이 401을 받아도 입력창은 하나만
+function askPassword(wrong) {
+  if (authWait) return authWait;
+  authWait = new Promise(resolve => {
+    const m = document.getElementById('authModal');
+    document.getElementById('authMsg').textContent = wrong || TOKEN ? '비밀번호가 틀렸어요. 다시 입력하세요.' : '봇 대시보드 비밀번호를 입력하세요.';
+    const inp = document.getElementById('authInput');
+    inp.value = ''; m.hidden = false; setTimeout(() => inp.focus(), 50);
+    const done = ok => {
+      m.hidden = true; authWait = null;
+      document.getElementById('authForm').onsubmit = null;
+      document.getElementById('authCancel').onclick = null;
+      resolve(ok);
+    };
+    document.getElementById('authForm').onsubmit = e => {
+      e.preventDefault();
+      TOKEN = inp.value.trim();
+      try { localStorage.setItem('pjhbot_token', TOKEN); } catch(err){}
+      if (TOKEN) authCanceled = false;
+      done(!!TOKEN);
+    };
+    document.getElementById('authCancel').onclick = () => done(false);
+  });
+  return authWait;
+}
+function setLocked(sec) {
+  const info = document.getElementById('connInfo');
+  info.textContent = 'locked ' + Math.ceil((sec || 600) / 60) + 'm'; info.className = 'conn-info off';
+  toast('비밀번호 오류가 많아 잠겼어요. ' + Math.ceil((sec || 600) / 60) + '분 뒤 다시 시도하세요');
+}
+function logout() {
+  TOKEN = ''; authCanceled = true;
+  try { localStorage.removeItem('pjhbot_token'); } catch(e){}
+  toast('로그아웃됨');
+  loadStatus();
+}
 function fmtUp(s) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60); return h>0?h+'h '+m+'m':m+'m '+(s%60)+'s'; }
 function fmtTime(ts) { const d=new Date(ts); return d.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
 function fmtDate(ts) { const d=new Date(ts); return d.toLocaleDateString('ko-KR',{month:'short',day:'numeric'})+' '+fmtTime(ts); }
@@ -487,10 +563,14 @@ async function loadStatus() {
   const dot=document.getElementById('statusDot'), info=document.getElementById('connInfo');
   if(d&&d.online) {
     dot.classList.add('online'); info.textContent='localhost:8080'; info.className='conn-info on';
+    info.style.cursor=''; info.onclick=null;
     document.getElementById('sUp').textContent=fmtUp(d.uptime);
     document.getElementById('sRm').textContent=d.rooms;
     document.getElementById('sMs').textContent=d.messages.toLocaleString();
     document.getElementById('sDl').textContent=d.deleted;
+  } else if (authCanceled) {
+    dot.classList.remove('online'); info.textContent='🔒 로그인'; info.className='conn-info off';
+    info.style.cursor='pointer'; info.onclick=relogin;
   } else {
     dot.classList.remove('online'); info.textContent='offline'; info.className='conn-info off';
     ['sUp','sRm','sMs','sDl'].forEach(id=>document.getElementById(id).textContent='--');
