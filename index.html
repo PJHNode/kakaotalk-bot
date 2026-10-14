@@ -150,6 +150,28 @@ textarea { resize: vertical; min-height: 36px; }
 .kk-orig { margin-top: 4px; font-size: 12px; color: var(--fg); background: rgba(245,91,122,.08); border-left: 2px solid var(--red); padding: 4px 8px; border-radius: 4px; font-style: normal; }
 .kk-meta { display: flex; flex-direction: column; font-size: 10px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; }
 .kk-row.me .kk-meta { align-items: flex-end; }
+.kk-bubble.pick { cursor: pointer; transition: box-shadow .12s; }
+.kk-bubble.pick:hover { box-shadow: 0 0 0 2px var(--border); }
+.kk-row.selected .kk-bubble { box-shadow: 0 0 0 2px var(--yellow); }
+.kk-readers { font-size: 10.5px; line-height: 1.45; margin: 3px 4px 0; color: var(--fg-dim); max-width: 100%; word-break: keep-all; }
+.kk-readers .u { color: var(--yellow); }
+.kk-readers .r { color: var(--green); opacity: .85; }
+.kk-composer { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 10px; }
+.kk-replybar { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.kk-replyto { font-size: 12px; color: var(--fg-dim); margin-bottom: 4px; }
+.kk-replyto b { color: var(--fg-bright); }
+.kk-inputrow { display: flex; gap: 8px; }
+.kk-inputrow input { flex: 1; min-width: 0; }
+.chk { font-size: 12px; color: var(--fg-dim); display: flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; }
+.chk input { width: auto; }
+.usage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+.ubar { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+.ubar > div { height: 100%; background: var(--green); transition: width .3s; }
+.ubar.warn > div { background: var(--yellow); }
+.ubar.bad > div { background: var(--red); }
+.gem-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+.gem-row:last-child { border-bottom: none; }
+.gem-row .n { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; }
 .kk-read { color: var(--yellow); cursor: help; }
 .kk-read.allread { color: var(--green); }
 .kk-time { white-space: nowrap; }
@@ -209,8 +231,10 @@ textarea { resize: vertical; min-height: 36px; }
   <div class="panel" id="panel-chat">
     <div class="section-header">
       <h2 id="chatTitle">Chat</h2>
-      <div style="display:flex;gap:8px;align-items:center">
-        <label style="font-size:12px;color:var(--fg-dim);display:flex;align-items:center;gap:4px"><input type="checkbox" id="chatAuto" checked style="width:auto"> auto</label>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label class="chk"><input type="checkbox" id="chatShowReads" checked onchange="loadChat()"> 읽음 명단</label>
+        <label class="chk" title="봇이 이 방 메시지를 1~4초 뒤 자동으로 읽음 처리"><input type="checkbox" id="chatAutoRead" onchange="toggleAutoRead()"> 봇 자동 읽음</label>
+        <label class="chk"><input type="checkbox" id="chatAuto" checked> auto</label>
         <button class="btn btn-sm" onclick="loadChat()">Refresh</button>
       </div>
     </div>
@@ -222,6 +246,19 @@ textarea { resize: vertical; min-height: 36px; }
     </div>
     <div id="kkView" class="kk-view"></div>
     <div class="empty" id="chatEmpty">Select a room.</div>
+    <div id="chatComposer" class="kk-composer" hidden>
+      <div id="replyBar" class="kk-replybar" hidden>
+        <div style="flex:1;min-width:0">
+          <div class="kk-replyto">↪ <b id="replyNick"></b>에게 답장 <span style="opacity:.7">(인용문을 고치면 답장조작)</span></div>
+          <input id="replyQuote" type="text" style="width:100%">
+        </div>
+        <button class="btn btn-sm" onclick="cancelReply()" title="답장 취소">✕</button>
+      </div>
+      <div class="kk-inputrow">
+        <input id="chatInput" type="text" placeholder="봇으로 메시지 보내기 (말풍선 클릭 = 답장)" onkeydown="if(event.key==='Enter'&&!event.isComposing){event.preventDefault();sendChat();}">
+        <button class="btn btn-accent" id="chatSendBtn" onclick="sendChat()">전송</button>
+      </div>
+    </div>
   </div>
 
   <!-- Permissions -->
@@ -237,7 +274,25 @@ textarea { resize: vertical; min-height: 36px; }
 
   <!-- AI Mode -->
   <div class="panel" id="panel-aichat">
-    <div class="section-header"><h2>AI Control</h2><span id="aiProviders" style="font-size:11px;display:flex;gap:6px"></span></div>
+    <div class="section-header"><h2>AI Control</h2></div>
+    <div class="card">
+      <div class="card-head">
+        <h3>AI 사용량 <span class="hint">오늘 (한국 시간)</span></h3>
+        <button class="btn btn-sm" onclick="loadUsage()">Refresh</button>
+      </div>
+      <div class="usage-grid">
+        <div>
+          <label class="field-label">OpenRouter (기본) <span id="orState"></span></label>
+          <div class="ubar" id="orBarWrap"><div id="orBar" style="width:0"></div></div>
+          <div id="orText" style="font-size:12px;margin-top:6px"></div>
+        </div>
+        <div>
+          <label class="field-label">Gemini (예비) · 빠른 순으로 사용</label>
+          <div id="gemList"></div>
+        </div>
+      </div>
+      <div id="usageToday" style="margin-top:12px;font-size:12px;color:var(--fg-dim)"></div>
+    </div>
     <div id="aiKeyWarn" hidden style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px">
       API key not set. Put an OpenRouter key in <span class="mono">data/apikey.txt</span> or a Gemini key in <span class="mono">data/geminikey.txt</span>.
     </div>
@@ -550,6 +605,48 @@ async function removeDemote(cid) {
   if(r&&r.ok) { toast('자동 강등 중지'); loadDemote(); }
 }
 
+// AI 사용량
+function hhmm(ts) { return new Date(ts).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}); }
+async function loadUsage() {
+  const d = await api('/api/aiusage');
+  const orText = document.getElementById('orText'), orState = document.getElementById('orState');
+  const bar = document.getElementById('orBar'), wrap = document.getElementById('orBarWrap');
+  const gem = document.getElementById('gemList'), today = document.getElementById('usageToday');
+  if (!d) { orText.textContent = 'Bot offline'; gem.innerHTML = ''; today.textContent = ''; return; }
+  const or = d.openrouter;
+  wrap.className = 'ubar';
+  if (!or.hasKey) {
+    orState.innerHTML = '<span class="badge badge-0">키 없음</span>'; bar.style.width = '0'; orText.textContent = 'data/apikey.txt 없음';
+  } else if (or.limit == null) {
+    orState.innerHTML = ''; bar.style.width = '0'; orText.textContent = '한도 조회 실패';
+  } else {
+    const pct = Math.min(100, Math.round(or.used / or.limit * 100));
+    bar.style.width = pct + '%';
+    if (or.blocked || or.remaining <= 0) wrap.className = 'ubar bad'; else if (or.remaining <= 10) wrap.className = 'ubar warn';
+    orState.innerHTML = or.blocked ? '<span class="badge badge-i">한도 소진</span>' : '<span class="badge badge-iv">사용 중</span>';
+    orText.innerHTML = '<span class="mono" style="color:var(--fg-bright)">'+or.used+' / '+or.limit+'</span> 회 사용 · 남은 <b style="color:var(--fg-bright)">'+or.remaining+'</b>회'
+      + (or.blocked ? '<br><span style="color:var(--red)">'+hhmm(or.blockedUntil)+'에 리셋 · 그 전까지 Gemini가 답변</span>' : '');
+  }
+  const g = d.gemini;
+  if (!g.hasKey) gem.innerHTML = emptyLine('키 없음 (data/geminikey.txt)');
+  else {
+    const ms = g.models.slice().sort((a,b) => (a.rank<0?99:a.rank) - (b.rank<0?99:b.rank));
+    const now = Date.now();
+    gem.innerHTML = ms.map(m => {
+      let st;
+      if (m.restUntil && m.restUntil > now) st = '<span class="badge badge-i">휴식 ~'+hhmm(m.restUntil)+'</span>';
+      else if (m.rank >= 0) st = '<span class="badge badge-iv">'+(m.rank+1)+'순위</span>';
+      else st = '<span class="badge badge-0">대기</span>';
+      const lat = m.latencyMs != null ? (m.latencyMs/1000).toFixed(1)+'s' : '측정 전';
+      return '<div class="gem-row"><span class="n">'+esc(m.name)+'</span><span class="mono" style="color:var(--fg-dim)">'+lat+'</span>'+st+'</div>';
+    }).join('') || emptyLine('모델 목록 없음');
+  }
+  const parts = (d.today||[]).sort((a,b)=>(b.ok+b.fail)-(a.ok+a.fail)).map(t =>
+    '<span class="mono" style="white-space:nowrap">'+esc(t.model.replace(/:free$/,''))+' <span style="color:var(--green)">✓'+t.ok+'</span>'+(t.fail?' <span style="color:var(--red)">✗'+t.fail+'</span>':'')+'</span>');
+  today.innerHTML = '오늘 AI 호출: <b style="color:var(--green)">성공 '+d.todayOk+'</b> · <b style="color:'+(d.todayFail?'var(--red)':'var(--fg-dim)')+'">실패 '+d.todayFail+'</b>'
+    + (parts.length ? '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 14px">'+parts.join('')+'</div>' : '');
+}
+
 // 보안 로그
 let secSeen=0;
 try { secSeen=+localStorage.getItem('pjhbot_secseen')||0; } catch(e){}
@@ -679,10 +776,7 @@ async function loadAi() {
   if (!d) return;
   aiData = d;
   document.getElementById('aiKeyWarn').hidden = !!d.hasKey;
-  const prov = (name, ok, note) => '<span class="badge '+(ok?'badge-iv':'badge-0')+'" title="'+esc(note)+'">'+name+(ok?'':' ✕')+'</span>';
-  document.getElementById('aiProviders').innerHTML =
-    prov('OpenRouter'+(d.openRouterBlocked?' (한도 소진)':''), d.hasOpenRouter && !d.openRouterBlocked, d.hasOpenRouter?'기본':'data/apikey.txt 없음')
-    + prov('Gemini 예비', d.hasGemini, d.hasGemini?'OpenRouter 실패 시 사용':'data/geminikey.txt 없음');
+  loadUsage();
   const ps = document.getElementById('aiPreset');
   ps.innerHTML = '<option value="">-- Choose a preset --</option>';
   (aiData.presets||[]).forEach((p,i)=>{ ps.innerHTML += '<option value="'+i+'">'+esc(p.name)+'</option>'; });
@@ -781,31 +875,50 @@ async function delMemory(i) {
 
 // KakaoTalk-style chat view
 let chatTimer = null;
+let chatMsgs = [], chatCid = null, replyTarget = null;
+function namesLine(arr, max) {
+  return arr.length > max ? arr.slice(0,max).map(esc).join(', ')+' 외 '+(arr.length-max)+'명' : arr.map(esc).join(', ');
+}
 async function loadChat() {
   const idx = document.getElementById('chatRoomSel').value;
   const view = document.getElementById('kkView');
   const empty = document.getElementById('chatEmpty');
-  if (idx === '') { view.innerHTML=''; view.hidden=true; empty.hidden=false; empty.textContent='Select a room.'; return; }
+  const composer = document.getElementById('chatComposer');
+  if (idx === '') { view.innerHTML=''; view.hidden=true; composer.hidden=true; empty.hidden=false; empty.textContent='Select a room.'; return; }
   const room = roomsData[idx];
+  if (chatCid !== room.chatId) { chatCid = room.chatId; cancelReply(); }
+  composer.hidden = false;
   const limit = document.getElementById('chatLimit').value;
   const d = await api('/api/chatview?chatId='+room.chatId+'&limit='+limit);
   if (!d || !d.messages) { view.hidden=true; empty.hidden=false; empty.textContent = d?'No messages.':'Bot offline.'; return; }
   document.getElementById('chatTitle').textContent = d.roomName || 'Chat';
+  if (typeof d.autoRead === 'boolean') document.getElementById('chatAutoRead').checked = d.autoRead;
   if (d.messages.length === 0) { view.innerHTML=''; view.hidden=true; empty.hidden=false; empty.textContent='No messages yet.'; return; }
   empty.hidden = true; view.hidden = false;
+  chatMsgs = d.messages;
+  const showReads = document.getElementById('chatShowReads').checked;
   // 스크롤 위치 유지 여부: 거의 맨 아래면 자동 스크롤
   const atBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 60;
-  view.innerHTML = d.messages.map(m => {
+  view.innerHTML = d.messages.map((m, i) => {
     const side = m.isBot ? 'me' : 'other';
     const time = new Date(m.timestamp).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const sel = replyTarget && replyTarget.logId === m.logId ? ' selected' : '';
     let bubble;
     if (m.deleted) {
       bubble = '<div class="kk-deleted-tag">🚫 삭제된 메시지</div>'
-        + '<div class="kk-bubble deleted">삭제됨'
+        + '<div class="kk-bubble deleted pick" onclick="pickReply('+i+')">삭제됨'
         + '<div class="kk-orig">원본: '+esc(m.text)+'</div></div>';
     } else {
       const quote = m.quote ? '<div class="kk-quote">'+esc(m.quote)+'</div>' : '';
-      bubble = '<div class="kk-bubble">'+quote+esc(m.text)+'</div>';
+      bubble = '<div class="kk-bubble pick" onclick="pickReply('+i+')" title="클릭해서 답장">'+quote+esc(m.text)+'</div>';
+    }
+    let readers = '';
+    if (showReads && (m.unreadCount + m.readCount) > 0) {
+      readers = '<div class="kk-readers">'
+        + (m.unreadCount > 0 ? '<span class="u">안읽음 '+namesLine(m.unreaders, 8)+'</span>' : '')
+        + (m.unreadCount > 0 && m.readCount > 0 ? ' · ' : '')
+        + (m.readCount > 0 ? '<span class="r">읽음 '+namesLine(m.readers, 8)+'</span>' : '')
+        + '</div>';
     }
     // 읽음 현황
     let readInfo = '';
@@ -818,14 +931,59 @@ async function loadChat() {
       const label = allread ? '✓읽음' : m.unreadCount;
       readInfo = '<span class="kk-read'+(allread?' allread':'')+'" title="'+esc(title)+'">'+label+'</span>';
     }
-    return '<div class="kk-row '+side+'">'
+    return '<div class="kk-row '+side+sel+'">'
       + (side==='other' ? '<div class="kk-nick">'+esc(m.author)+'</div>' : '')
       + '<div class="kk-line">'
       + bubble
       + '<div class="kk-meta">'+readInfo+'<span class="kk-time">'+time+'</span></div>'
-      + '</div></div>';
+      + '</div>' + readers + '</div>';
   }).join('');
   if (atBottom) view.scrollTop = view.scrollHeight;
+}
+function pickReply(i) {
+  const m = chatMsgs[i]; if (!m) return;
+  if (!m.authorUid) { toast('작성자를 알 수 없어 답장할 수 없어요'); return; }
+  if (replyTarget && replyTarget.logId === m.logId) { cancelReply(); loadChat(); return; }
+  replyTarget = { logId: m.logId, authorUid: m.authorUid, author: m.author, text: m.text };
+  document.getElementById('replyNick').textContent = m.author;
+  document.getElementById('replyQuote').value = m.text;
+  document.getElementById('replyBar').hidden = false;
+  document.querySelectorAll('#kkView .kk-row').forEach((r, j) => r.classList.toggle('selected', j === i));
+  document.getElementById('chatInput').focus();
+}
+function cancelReply() {
+  replyTarget = null;
+  document.getElementById('replyBar').hidden = true;
+  document.querySelectorAll('#kkView .kk-row.selected').forEach(r => r.classList.remove('selected'));
+}
+let chatSending = false;
+async function sendChat() {
+  if (chatSending) return;
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  const room = roomsData[document.getElementById('chatRoomSel').value];
+  if (!text || !room) return;
+  chatSending = true; document.getElementById('chatSendBtn').disabled = true;
+  let r;
+  if (replyTarget) {
+    const quote = document.getElementById('replyQuote').value.trim() || replyTarget.text;
+    r = await api('/api/fakereply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      chatId: room.chatId, targetUserId: replyTarget.authorUid, fakeOriginal: quote, replyMessage: text, srcLogId: replyTarget.logId })});
+  } else {
+    r = await api('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId: room.chatId, message: text})});
+  }
+  chatSending = false; document.getElementById('chatSendBtn').disabled = false;
+  if (r && r.ok) {
+    input.value = ''; cancelReply();
+    await loadChat();
+    const v = document.getElementById('kkView'); v.scrollTop = v.scrollHeight;
+  } else toast(r?.error || '전송 실패');
+}
+async function toggleAutoRead() {
+  const room = roomsData[document.getElementById('chatRoomSel').value]; if (!room) return;
+  const on = document.getElementById('chatAutoRead').checked;
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId: room.chatId, autoRead: on})});
+  if (r && r.ok) toast(on ? '봇 자동 읽음 ON (지금까지 메시지도 읽음 처리)' : '봇 자동 읽음 OFF'); else toast('Failed');
 }
 function startChatAuto() {
   if (chatTimer) clearInterval(chatTimer);
@@ -844,7 +1002,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
   });
 });
 
-async function init() { await loadStatus(); await loadRooms(); loadSecurity(); setInterval(loadStatus,5000); setInterval(loadSecurity,15000); startChatAuto(); }
+async function init() { await loadStatus(); await loadRooms(); loadSecurity(); setInterval(loadStatus,5000); setInterval(loadSecurity,15000); setInterval(()=>{ if(document.getElementById('panel-aichat').classList.contains('active')) loadUsage(); },30000); startChatAuto(); }
 init();
 </script>
 </body>
