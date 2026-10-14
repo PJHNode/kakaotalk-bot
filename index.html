@@ -181,6 +181,22 @@ textarea { resize: vertical; min-height: 36px; }
 .fact button:hover { color: var(--red); }
 .person-add { display: flex; gap: 6px; }
 .person-add input { flex: 1; min-width: 0; padding: 5px 10px; font-size: 12px; }
+.lim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.lim-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.lim-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--fg-dim); margin-top: 6px; }
+.lim-in { width: 64px; padding: 4px 8px; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+.lim-lab { width: 30px; color: var(--fg); }
+.lim-user { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; color: var(--fg-dim); }
+.lim-user:last-child { border-bottom: none; }
+.lim-user .n { color: var(--fg-bright); font-weight: 600; min-width: 80px; font-size: 13px; }
+.lim-user .u { font-family: 'JetBrains Mono', monospace; min-width: 110px; }
+.lim-user .custom { color: var(--yellow); }
+.pl-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.pl-item:last-child { border-bottom: none; }
+.pl-item .t { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--fg-dim); min-width: 92px; }
+.pl-item .who { color: var(--fg-bright); font-weight: 600; }
+.pl-item .by { font-size: 11px; color: var(--fg-dim); }
+.pl-item .why { flex-basis: 100%; font-size: 12px; color: var(--fg-dim); padding-left: 102px; }
 .gem-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
 .gem-row:last-child { border-bottom: none; }
 .gem-row .n { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; }
@@ -289,6 +305,17 @@ textarea { resize: vertical; min-height: 36px; }
     <div style="overflow-x:auto">
       <table id="permsTable" hidden><thead><tr><th>User</th><th>Grade</th><th>Change</th></tr></thead><tbody id="permsBody"></tbody></table>
     </div>
+    <div class="card" style="margin-top:20px">
+      <div class="card-head">
+        <h3>권한 변경 기록 <span class="hint">AI·자동 강등·명령어·대시보드 변경 모두</span></h3>
+        <div class="lim-row" style="margin:0">
+          AI·자동 강등 <input type="number" min="0" max="720" id="autoRestoreH" class="lim-in"> 시간 뒤 자동 복구 (0 = 끔)
+          <button class="btn btn-sm" onclick="saveAutoRestore()">저장</button>
+          <button class="btn btn-sm" onclick="loadPermLog()">Refresh</button>
+        </div>
+      </div>
+      <div id="permLogList"></div>
+    </div>
   </div>
 
   <!-- AI Mode -->
@@ -353,6 +380,38 @@ textarea { resize: vertical; min-height: 36px; }
             </select>
           </div>
         </div>
+      </div>
+
+      <!-- 사용 한도 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>AI 사용 한도 <span class="hint">넘으면 AI를 부르지 않음 · 0 = 무제한 · 오너(V)는 제한 없음</span></h3>
+          <button class="btn btn-sm" onclick="loadLimits()">Refresh</button>
+        </div>
+        <div class="lim-grid">
+          <div class="lim-box">
+            <div class="field-label">이 방 전체 <span id="limRoomUsed" class="mono"></span></div>
+            <div class="lim-row">
+              <input type="number" min="0" id="limRoomMin" class="lim-in"> <span>/분</span>
+              <input type="number" min="0" id="limRoomDay" class="lim-in"> <span>/하루</span>
+              <button class="btn btn-accent btn-sm" onclick="saveLimit('room')">저장</button>
+              <button class="btn btn-sm" id="limRoomReset" onclick="clearLimit('room')">기본값</button>
+            </div>
+          </div>
+          <div class="lim-box">
+            <div class="field-label">전체 기본값 (따로 정하지 않은 방·사람)</div>
+            <div class="lim-row"><span class="lim-lab">방</span>
+              <input type="number" min="0" id="limDefRoomMin" class="lim-in"> <span>/분</span>
+              <input type="number" min="0" id="limDefRoomDay" class="lim-in"> <span>/하루</span>
+              <button class="btn btn-sm" onclick="saveLimit('defaultRoom')">저장</button></div>
+            <div class="lim-row"><span class="lim-lab">사람</span>
+              <input type="number" min="0" id="limDefUserMin" class="lim-in"> <span>/분</span>
+              <input type="number" min="0" id="limDefUserDay" class="lim-in"> <span>/하루</span>
+              <button class="btn btn-sm" onclick="saveLimit('defaultUser')">저장</button></div>
+          </div>
+        </div>
+        <div class="field-label" style="margin-top:14px">사람별 (이 방 멤버)</div>
+        <div id="limUsers"></div>
       </div>
 
       <!-- 2. 타겟 (트롤) -->
@@ -638,7 +697,7 @@ function loadPermRoom() {
 }
 async function changePerm(uid,lv) {
   const r=await api('/api/perms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid,level:+lv})});
-  if(r&&r.ok) { toast('Permission updated'); await loadRooms(); loadPermRoom(); } else toast(r?.error||'Failed');
+  if(r&&r.ok) { toast('Permission updated'); await loadRooms(); loadPermRoom(); loadPermLog(); } else toast(r?.error||'Failed');
 }
 
 // AI 탭 공용
@@ -701,6 +760,87 @@ async function addDemote() {
 async function removeDemote(cid) {
   const r=await api('/api/demote',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid})});
   if(r&&r.ok) { toast('자동 강등 중지'); loadDemote(); }
+}
+
+// AI 사용 한도
+let limData = null;
+function limStr(l) { return (l.perMin ? l.perMin+'/분' : '분 무제한') + ' · ' + (l.perDay ? l.perDay+'/하루' : '하루 무제한'); }
+async function loadLimits() {
+  const room = aiRoom(); if (!room) return;
+  const d = await api('/api/limits?chatId=' + room.chatId);
+  if (!d) return;
+  limData = d;
+  const setv = (id, v) => { const e = document.getElementById(id); if (document.activeElement !== e) e.value = v; };
+  setv('limDefRoomMin', d.defaultRoom.perMin); setv('limDefRoomDay', d.defaultRoom.perDay);
+  setv('limDefUserMin', d.defaultUser.perMin); setv('limDefUserDay', d.defaultUser.perDay);
+  const r = d.room || {};
+  const rl = r.override || d.defaultRoom;
+  setv('limRoomMin', rl.perMin); setv('limRoomDay', rl.perDay);
+  document.getElementById('limRoomReset').hidden = !r.override;
+  document.getElementById('limRoomUsed').textContent = '· 지금 1분 '+(r.usedMin||0)+'회 · 오늘 '+(r.usedDay||0)+'회' + (r.override ? ' · 개별 설정' : ' · 기본값');
+  const users = (d.users || []).sort((a,b) => b.usedDay - a.usedDay || a.nick.localeCompare(b.nick));
+  document.getElementById('limUsers').innerHTML = users.map(u => {
+    const l = u.override || d.defaultUser;
+    const used = '<span class="u">1분 '+u.usedMin+' · 오늘 '+u.usedDay+'</span>';
+    if (u.owner) return '<div class="lim-user"><span class="n">'+esc(u.nick)+'</span>'+used+'<span>제한 없음 (V)</span></div>';
+    return '<div class="lim-user"><span class="n">'+esc(u.nick)+'</span>'+used
+      + '<input type="number" min="0" class="lim-in" id="lu-m-'+u.userId+'" value="'+l.perMin+'"> /분'
+      + '<input type="number" min="0" class="lim-in" id="lu-d-'+u.userId+'" value="'+l.perDay+'"> /하루'
+      + '<button class="btn btn-sm" onclick="saveUserLimit('+u.userId+')">저장</button>'
+      + (u.override ? '<span class="custom">개별 설정</span><button class="btn btn-sm" onclick="clearLimit(\'user\','+u.userId+')">기본값</button>' : '<span>기본값</span>')
+      + '</div>';
+  }).join('') || emptyLine('멤버 없음');
+}
+async function postLimit(body) {
+  const r = await api('/api/limits',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if (r && r.ok) { toast('한도 저장됨'); loadLimits(); } else toast(r?.error || 'Failed');
+}
+function numv(id) { return Math.max(0, parseInt(document.getElementById(id).value || '0', 10) || 0); }
+function saveLimit(scope) {
+  const room = aiRoom();
+  if (scope === 'room') return postLimit({scope, id: room.chatId, perMin: numv('limRoomMin'), perDay: numv('limRoomDay')});
+  if (scope === 'defaultRoom') return postLimit({scope, perMin: numv('limDefRoomMin'), perDay: numv('limDefRoomDay')});
+  if (scope === 'defaultUser') return postLimit({scope, perMin: numv('limDefUserMin'), perDay: numv('limDefUserDay')});
+}
+function saveUserLimit(uid) { postLimit({scope:'user', id: uid, perMin: numv('lu-m-'+uid), perDay: numv('lu-d-'+uid)}); }
+function clearLimit(scope, uid) {
+  const room = aiRoom();
+  postLimit({scope, id: scope === 'room' ? room.chatId : uid, clear: true});
+}
+
+// 권한 변경 기록
+async function loadPermLog() {
+  const d = await api('/api/permlog');
+  const el = document.getElementById('permLogList');
+  if (!d) { el.innerHTML = emptyLine('Bot offline'); return; }
+  const h = document.getElementById('autoRestoreH');
+  if (document.activeElement !== h) h.value = d.autoRestoreHours;
+  if (!d.log.length) { el.innerHTML = emptyLine('변경 기록 없음'); return; }
+  el.innerHTML = d.log.map(c => {
+    let st = '';
+    if (c.status === '복구됨') st = '<span class="badge badge-iv">복구됨</span>';
+    else if (c.status === '되돌림') st = '<span class="badge badge-ii">되돌림</span>';
+    else if (c.status === '취소됨') st = '<span class="badge badge-0">자동 복구 취소</span>';
+    else if (c.restoreAt) st = '<span class="badge badge-iii">'+fmtDate(c.restoreAt)+' 자동 복구</span>';
+    const canRevert = !c.status || c.status === '취소됨';
+    return '<div class="pl-item"><span class="t">'+fmtDate(c.time)+'</span>'
+      + '<span class="who">'+esc(c.nick)+'</span>'
+      + permBadge(c.from)+' → '+permBadge(c.to)
+      + '<span class="by">'+esc(c.by)+(c.room ? ' · '+esc(c.room) : '')+'</span>'
+      + st
+      + (canRevert ? '<button class="btn btn-sm" style="margin-left:auto" onclick="revertPerm('+c.id+')">되돌리기</button>' : '')
+      + (c.reason ? '<div class="why">“'+esc(c.reason)+'”</div>' : '')
+      + '</div>';
+  }).join('');
+}
+async function revertPerm(id) {
+  const r = await api('/api/permlog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revert: id})});
+  if (r && r.ok) { toast('되돌렸어요'); await loadRooms(); loadPermRoom(); loadPermLog(); } else toast(r?.error || 'Failed');
+}
+async function saveAutoRestore() {
+  const h = numv('autoRestoreH');
+  const r = await api('/api/permlog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({autoRestoreHours: h})});
+  if (r && r.ok) toast(h ? h+'시간 뒤 자동 복구 (이후 강등부터 적용)' : '자동 복구 끔'); else toast('Failed');
 }
 
 // 사람별 기억
@@ -927,6 +1067,7 @@ function loadAiRoom() {
   loadTroll();
   loadDemote();
   loadPeople();
+  loadLimits();
   const cid = room.chatId;
   const on = aiData.rooms && aiData.rooms[cid] === true;
   const st = document.getElementById('aiStatus');
@@ -1125,6 +1266,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
     tab.classList.add('active');
     document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'aichat') loadAi();
+    if (tab.dataset.tab === 'perms') loadPermLog();
     if (tab.dataset.tab === 'chat') { loadChat(); const v=document.getElementById('kkView'); setTimeout(()=>{v.scrollTop=v.scrollHeight;},50); }
   });
 });
