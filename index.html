@@ -197,6 +197,27 @@ textarea { resize: vertical; min-height: 36px; }
 .pl-item .who { color: var(--fg-bright); font-weight: 600; }
 .pl-item .by { font-size: 11px; color: var(--fg-dim); }
 .pl-item .why { flex-basis: 100%; font-size: 12px; color: var(--fg-dim); padding-left: 102px; }
+.diag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 8px; }
+.diag-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+.diag-item.fail { border-color: var(--red); }
+.diag-item.warn { border-color: rgba(245,200,66,.5); }
+.di-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.di-icon.ok { background: var(--green-dim); color: var(--green); }
+.di-icon.warn { background: var(--yellow-dim); color: var(--yellow); }
+.di-icon.fail { background: var(--red-dim); color: var(--red); }
+.di-icon.info { background: rgba(200,200,216,.1); color: var(--fg-dim); }
+.di-name { font-size: 12.5px; color: var(--fg-bright); font-weight: 600; }
+.di-detail { font-size: 11.5px; color: var(--fg-dim); word-break: break-word; margin-top: 2px; }
+.log-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.log-filters button { background: var(--surface2); border: 1px solid var(--border); color: var(--fg-dim); border-radius: 12px; padding: 3px 10px; font-size: 11.5px; cursor: pointer; font-family: inherit; }
+.log-filters button.on { border-color: var(--accent); color: var(--fg-bright); background: var(--accent-glow); }
+.log-filters button .c { font-family: 'JetBrains Mono', monospace; opacity: .7; margin-left: 4px; }
+.log-box { max-height: 520px; overflow: auto; background: #0b0b14; border: 1px solid var(--border); border-radius: 8px; font-family: 'JetBrains Mono', 'Noto Sans KR', monospace; font-size: 11.5px; padding: 8px 10px; line-height: 1.55; }
+.ll { white-space: pre-wrap; word-break: break-all; color: var(--fg); }
+.ll .lt { color: var(--fg-dim); margin-right: 8px; }
+.ll.c-conn { color: #7dd3fc; } .ll.c-ai { color: #c4b5fd; } .ll.c-photo { color: #f9a8d4; } .ll.c-read { color: #86efac; }
+.ll.c-sec { color: #fca5a5; } .ll.c-send { color: var(--yellow); } .ll.c-perm { color: #fdba74; } .ll.c-msg { color: var(--fg-dim); }
+.ll.err { color: var(--red); }
 .gem-row { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 0; border-bottom: 1px solid var(--border); }
 .gem-row:last-child { border-bottom: none; }
 .gem-row .n { flex: 1; min-width: 0; font-family: 'JetBrains Mono', monospace; color: var(--fg-bright); overflow: hidden; text-overflow: ellipsis; }
@@ -251,6 +272,7 @@ textarea { resize: vertical; min-height: 36px; }
     <button class="tab" data-tab="logs">Messages</button>
     <button class="tab" data-tab="deleted">Deleted</button>
     <button class="tab" data-tab="stats">Stats</button>
+    <button class="tab" data-tab="diag">Logs <span id="diagBadge" class="badge" style="background:var(--red-dim);color:var(--red);margin-left:4px" hidden></span></button>
   </div>
 
   <!-- Rooms -->
@@ -542,6 +564,32 @@ textarea { resize: vertical; min-height: 36px; }
     </div>
     <div id="statsContent"></div>
   </div>
+
+  <!-- 진단 · 로그 -->
+  <div class="panel" id="panel-diag">
+    <div class="card">
+      <div class="card-head">
+        <h3>진단 <span class="hint" id="diagSummary"></span></h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="loadDiag(false)">새로고침</button>
+          <button class="btn btn-sm" onclick="loadDiag(true)" title="AI를 실제로 1회 호출합니다 (한도 1회 사용)">AI 실제 테스트</button>
+        </div>
+      </div>
+      <div id="diagList" class="diag-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3>로그 <span class="hint">최근 1,500줄 · 봇을 다시 켜면 비워짐</span></h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="sysLogSearch" placeholder="검색" oninput="renderSysLogs()" style="width:140px;padding:5px 10px;font-size:12px">
+          <label class="chk"><input type="checkbox" id="sysLogAuto" checked> 자동</label>
+          <button class="btn btn-sm" onclick="copySysLogs()">복사</button>
+        </div>
+      </div>
+      <div id="sysLogFilters" class="log-filters"></div>
+      <div id="sysLogBox" class="log-box"></div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -777,6 +825,61 @@ async function addDemote() {
 async function removeDemote(cid) {
   const r=await api('/api/demote',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid})});
   if(r&&r.ok) { toast('자동 강등 중지'); loadDemote(); }
+}
+
+// 진단 · 로그
+const LOG_CATS = [['all','전체'],['conn','연결',/^\[연결\]|^연결 (끊김|성공)/],['ai','AI',/^\[(자율형|AI|Gemini|한도|눈치|기억|AI 사용량)/],
+  ['photo','사진',/^\[사진\]/],['read','읽음',/^\[읽음처리/],['sec','보안',/^\[보안\]/],['send','전송 제한',/^\[전송 제한\]/],
+  ['perm','권한',/^\[권한\]/],['msg','메시지',/^\[메시지\]/],['data','데이터',/^\[데이터\]/],['err','오류',null]];
+let sysLogs = [], sysLogLast = 0, sysLogFilter = 'all';
+function logCat(t) { for (const c of LOG_CATS) if (c[2] && c[2].test(t)) return c[0]; return 'etc'; }
+function isErrLine(l) { return l.err || /실패|오류|Exception|Error/.test(l.text); }
+async function loadSysLogs() {
+  const d = await api('/api/logs?after=' + sysLogLast);
+  if (!d) return;
+  if (d.latestSeq < sysLogLast) { sysLogs = []; sysLogLast = 0; return loadSysLogs(); } // 봇이 다시 켜짐
+  for (const l of d.lines) { l.cat = logCat(l.text); l.bad = isErrLine(l); sysLogs.push(l); }
+  if (sysLogs.length > 1500) sysLogs = sysLogs.slice(-1500);
+  sysLogLast = d.latestSeq;
+  renderSysLogs();
+}
+function setSysLogFilter(f) { sysLogFilter = f; renderSysLogs(); }
+function visibleSysLogs() {
+  const q = document.getElementById('sysLogSearch').value.trim().toLowerCase();
+  return sysLogs.filter(l => (sysLogFilter === 'all' || (sysLogFilter === 'err' ? l.bad : l.cat === sysLogFilter)) && (!q || l.text.toLowerCase().includes(q)));
+}
+function renderSysLogs() {
+  const counts = {};
+  sysLogs.forEach(l => { counts[l.cat] = (counts[l.cat] || 0) + 1; if (l.bad) counts.err = (counts.err || 0) + 1; });
+  document.getElementById('sysLogFilters').innerHTML = LOG_CATS.map(c =>
+    '<button class="' + (sysLogFilter === c[0] ? 'on' : '') + '" onclick="setSysLogFilter(\'' + c[0] + '\')">' + c[1]
+    + '<span class="c">' + (c[0] === 'all' ? sysLogs.length : (counts[c[0]] || 0)) + '</span></button>').join('');
+  const box = document.getElementById('sysLogBox');
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  const vis = visibleSysLogs().slice(-500);
+  box.innerHTML = vis.length
+    ? vis.map(l => '<div class="ll c-' + l.cat + (l.bad ? ' err' : '') + '"><span class="lt">' + fmtTime(l.time) + '</span>' + esc(l.text) + '</div>').join('')
+    : '<div style="color:var(--fg-dim);padding:12px 0;text-align:center">로그 없음</div>';
+  if (atBottom) box.scrollTop = box.scrollHeight;
+}
+function copySysLogs() {
+  const vis = visibleSysLogs();
+  const txt = vis.map(l => fmtDate(l.time) + ' ' + l.text).join('\n');
+  navigator.clipboard.writeText(txt).then(() => toast('로그 복사됨 (' + vis.length + '줄)'), () => toast('복사 실패'));
+}
+async function loadDiag(test, quiet) {
+  if (test) toast('AI 호출 중… (한도 1회 사용)');
+  const d = await api('/api/diag' + (test ? '?test=ai' : ''));
+  const badge = document.getElementById('diagBadge');
+  if (!d) { if (!quiet) document.getElementById('diagList').innerHTML = emptyLine('Bot offline'); badge.hidden = true; return; }
+  const fails = d.items.filter(i => i.status === 'fail').length, warns = d.items.filter(i => i.status === 'warn').length;
+  badge.hidden = fails === 0; badge.textContent = fails;
+  document.getElementById('diagSummary').textContent = fmtTime(d.time) + ' 기준 · 실패 ' + fails + ' · 주의 ' + warns;
+  const icon = { ok: '✓', warn: '!', fail: '✕', info: 'i' };
+  const order = { fail: 0, warn: 1, ok: 2, info: 3 };
+  document.getElementById('diagList').innerHTML = d.items.slice().sort((a, b) => order[a.status] - order[b.status]).map(i =>
+    '<div class="diag-item ' + i.status + '"><span class="di-icon ' + i.status + '">' + icon[i.status] + '</span>'
+    + '<div><div class="di-name">' + esc(i.name) + '</div><div class="di-detail">' + esc(i.detail) + '</div></div></div>').join('');
 }
 
 // AI 사용 한도
@@ -1287,11 +1390,12 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
     if (tab.dataset.tab === 'aichat') loadAi();
     if (tab.dataset.tab === 'perms') loadPermLog();
+    if (tab.dataset.tab === 'diag') { loadDiag(false); loadSysLogs(); }
     if (tab.dataset.tab === 'chat') { loadChat(); const v=document.getElementById('kkView'); setTimeout(()=>{v.scrollTop=v.scrollHeight;},50); }
   });
 });
 
-async function init() { await loadStatus(); await loadRooms(); loadSecurity(); setInterval(loadStatus,5000); setInterval(loadSecurity,15000); setInterval(()=>{ if(document.getElementById('panel-aichat').classList.contains('active')) loadUsage(); },30000); startChatAuto(); }
+async function init() { await loadStatus(); await loadRooms(); loadSecurity(); setInterval(loadStatus,5000); setInterval(loadSecurity,15000); setInterval(()=>{ if(document.getElementById('panel-aichat').classList.contains('active')) loadUsage(); },30000); setInterval(()=>{ if(document.getElementById('panel-diag').classList.contains('active') && document.getElementById('sysLogAuto').checked) loadSysLogs(); },3000); setInterval(()=>loadDiag(false, true),60000); loadDiag(false, true); startChatAuto(); }
 init();
 </script>
 </body>
