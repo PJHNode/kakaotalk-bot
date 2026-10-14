@@ -111,6 +111,18 @@ textarea { resize: vertical; min-height: 36px; }
 .form-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
 .form-row input, .form-row select { min-width: 0; }
 .empty { text-align: center; padding: 32px 16px; color: var(--fg-dim); font-size: 13px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.card-head h3 { font-size: 13px; font-weight: 600; color: var(--fg-bright); display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; white-space: nowrap; }
+.card-head .hint { font-size: 11px; color: var(--fg-dim); font-weight: 400; white-space: normal; }
+.field-label { font-size: 12px; color: var(--fg-dim); display: block; margin-bottom: 6px; }
+.tune-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-top: 16px; }
+.row-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.row-item:last-child { border-bottom: none; }
+.sec-item { padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.sec-item:last-child { border-bottom: none; }
+.sec-meta { font-size: 11px; color: var(--fg-dim); display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 3px; }
+.sec-text { color: var(--fg-bright); word-break: break-word; }
 
 /* Chat log */
 .msg-list { max-height: 500px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
@@ -175,8 +187,7 @@ textarea { resize: vertical; min-height: 36px; }
     <button class="tab active" data-tab="rooms">Rooms</button>
     <button class="tab" data-tab="chat">Chat</button>
     <button class="tab" data-tab="perms">Permissions</button>
-    <button class="tab" data-tab="aichat">AI Mode</button>
-    <button class="tab" data-tab="troll">Blacklist</button>
+    <button class="tab" data-tab="aichat">AI <span id="secBadge" class="badge" style="background:var(--red-dim);color:var(--red);margin-left:4px" hidden></span></button>
     <button class="tab" data-tab="reply">Fake Reply</button>
     <button class="tab" data-tab="send">Send</button>
     <button class="tab" data-tab="logs">Messages</button>
@@ -225,90 +236,103 @@ textarea { resize: vertical; min-height: 36px; }
 
   <!-- AI Mode -->
   <div class="panel" id="panel-aichat">
-    <div class="section-header"><h2>Autonomous AI Mode</h2></div>
-    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">When ON, the bot reads the room's conversation and joins in naturally when someone calls "봇" or mentions it. Powered by OpenRouter (free).</p>
+    <div class="section-header"><h2>AI Control</h2></div>
     <div id="aiKeyWarn" hidden style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px">
       API key not set. Put your OpenRouter API key in <span class="mono">data/apikey.txt</span> next to the bot.
     </div>
     <div class="form-row">
-      <select id="aiRoomSel" onchange="loadAiRoom()"><option value="">-- Room --</option></select>
+      <select id="aiRoomSel" onchange="loadAiRoom()" style="min-width:220px"><option value="">-- Room --</option></select>
     </div>
+    <div class="empty" id="aiRoomEmpty">방을 선택하면 그 방의 AI 대화 · 타겟 · 강등 · 기억을 한 번에 관리할 수 있어요.</div>
+
     <div id="aiRoomPanel" hidden>
-      <div class="form-row" style="align-items:center">
-        <span style="font-size:13px;color:var(--fg-dim)">Status:</span>
-        <span id="aiStatus" class="badge badge-0">OFF</span>
-        <button class="btn btn-accent btn-sm" id="aiToggleBtn" onclick="toggleAi()">Turn ON</button>
-      </div>
-      <div style="margin-top:16px">
-        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Preset</label>
-        <div class="form-row" style="margin-bottom:12px">
+      <!-- 1. 대화 모드 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>대화 모드 <span id="aiStatus" class="badge badge-0">OFF</span></h3>
+          <button class="btn btn-accent btn-sm" id="aiToggleBtn" onclick="toggleAi()">Turn ON</button>
+        </div>
+        <p class="field-label" style="margin-bottom:12px">ON이면 '봇'을 부르거나 멘션할 때 대화에 끼어들어요. OFF여도 아래 AI 타겟에게는 반응합니다.</p>
+        <label class="field-label">성격 프리셋</label>
+        <div class="form-row">
           <select id="aiPreset" onchange="applyPreset()" style="flex:1;min-width:150px"><option value="">-- Choose a preset --</option></select>
         </div>
-        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Personality (edit freely, empty = default)</label>
+        <label class="field-label">성격 (자유 수정, 비우면 기본)</label>
         <textarea id="aiPersona" placeholder="e.g. 까칠하지만 정 있는 츤데레 말투로 반말로 대화해" style="width:100%;min-height:80px"></textarea>
-        <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="saveAiPersona()">Save Personality</button></div>
+        <div style="margin-top:8px"><button class="btn btn-accent btn-sm" onclick="saveAiPersona()">성격 저장</button></div>
+        <div class="tune-grid">
+          <div>
+            <label class="field-label">눈치껏 참여: <span id="aiProVal" class="mono" style="color:var(--accent)">0%</span></label>
+            <input type="range" id="aiProactive" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('aiProVal').textContent=this.value+'%'" onchange="saveAiTune()">
+          </div>
+          <div>
+            <label class="field-label">온도 (창의성): <span id="aiTempVal" class="mono" style="color:var(--accent)">0.9</span></label>
+            <input type="range" id="aiTemp" min="0" max="15" value="9" style="width:100%" oninput="document.getElementById('aiTempVal').textContent=(this.value/10).toFixed(1)" onchange="saveAiTune()">
+          </div>
+          <div>
+            <label class="field-label">응답 길이</label>
+            <select id="aiLen" onchange="saveAiTune()" style="width:100%">
+              <option value="80">짧게</option>
+              <option value="200" selected>보통</option>
+              <option value="500">길게</option>
+            </select>
+          </div>
+        </div>
       </div>
 
-      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div>
-          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">눈치껏 참여 (proactive join): <span id="aiProVal" class="mono" style="color:var(--accent)">0%</span></label>
-          <input type="range" id="aiProactive" min="0" max="100" value="0" style="width:100%" oninput="document.getElementById('aiProVal').textContent=this.value+'%'" onchange="saveAiTune()">
+      <!-- 2. 타겟 (트롤) -->
+      <div class="card">
+        <div class="card-head">
+          <h3>타겟 <span class="hint">AI: 말할 때마다 AI가 상황 보고 놀림·강등·답장조작 / 고정: 같은 문구로 답장</span></h3>
         </div>
-        <div>
-          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">온도 (창의성): <span id="aiTempVal" class="mono" style="color:var(--accent)">0.9</span></label>
-          <input type="range" id="aiTemp" min="0" max="15" value="9" style="width:100%" oninput="document.getElementById('aiTempVal').textContent=(this.value/10).toFixed(1)" onchange="saveAiTune()">
-        </div>
-        <div>
-          <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">응답 길이</label>
-          <select id="aiLen" onchange="saveAiTune()" style="width:100%">
-            <option value="80">짧게</option>
-            <option value="200" selected>보통</option>
-            <option value="500">길게</option>
-          </select>
-        </div>
-      </div>
-
-      <div style="margin-top:20px">
-        <label style="font-size:12px;color:var(--fg-dim);display:block;margin-bottom:6px">Memory (봇이 기억하는 사실)</label>
         <div class="form-row">
-          <input type="text" id="aiMemInput" placeholder="예: 철수는 치킨을 좋아함" style="flex:1;min-width:150px">
+          <select id="aiTargetSel" style="min-width:140px"><option value="">-- 멤버 --</option></select>
+          <select id="trollMode" onchange="document.getElementById('trollMsg').hidden=this.value!=='fixed'">
+            <option value="ai">AI</option>
+            <option value="fixed">고정 문구</option>
+          </select>
+          <input type="text" id="trollMsg" placeholder="고정 답장 문구" style="flex:1;min-width:120px" hidden>
+          <button class="btn btn-accent btn-sm" onclick="addTroll()">추가</button>
+        </div>
+        <div id="trollList"></div>
+        <p class="field-label" style="margin:8px 0 0">타겟은 봇이 있는 모든 방에 공통 적용돼요.</p>
+      </div>
+
+      <!-- 3. 자동 강등 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>자동 강등 <span class="hint">이 방에서 타겟이 4~6번 말할 때마다 권한 1단계 하락</span></h3>
+        </div>
+        <div class="form-row">
+          <select id="aiDemoteSel" style="min-width:140px"><option value="">-- 멤버 --</option></select>
+          <button class="btn btn-accent btn-sm" onclick="addDemote()">시작</button>
+        </div>
+        <div id="demoteList"></div>
+      </div>
+
+      <!-- 4. 기억 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>기억 <span class="hint">AI가 대화 보고 스스로 저장 (채팅엔 안 보임)</span></h3>
+        </div>
+        <div class="form-row">
+          <input type="text" id="aiMemInput" placeholder="직접 추가: 예) 철수는 치킨을 좋아함" style="flex:1;min-width:150px">
           <button class="btn btn-accent btn-sm" onclick="addMemory()">추가</button>
         </div>
         <div id="aiMemList"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Blacklist / Troll -->
-  <div class="panel" id="panel-troll">
-    <div class="section-header"><h2>Troll Mode</h2></div>
-    <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">AI: AI generates dynamic troll replies. Fixed: same fake-reply every time.</p>
-    <div class="form-row">
-      <select id="trollRoomSel" onchange="loadTrollMembers()"><option value="">-- Room --</option></select>
-      <select id="trollMemSel"><option value="">-- User --</option></select>
-      <label style="display:flex;align-items:center;gap:6px;color:var(--fg-dim);font-size:12px;white-space:nowrap">
-        <input type="checkbox" id="trollAI" onchange="document.getElementById('trollMsg').disabled=this.checked;if(this.checked)document.getElementById('trollMsg').value='AI mode'"> AI Mode
-      </label>
-      <input type="text" id="trollMsg" placeholder="Fixed reply message" style="flex:1;min-width:120px">
-      <button class="btn btn-accent btn-sm" onclick="addTroll()">Add</button>
-    </div>
-    <div style="overflow-x:auto">
-      <table><thead><tr><th>User</th><th>Mode</th><th></th></tr></thead><tbody id="trollBody"></tbody></table>
-    </div>
-    <div class="empty" id="trollEmpty" hidden>No targets.</div>
-
-    <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
-      <div class="section-header"><h2>Auto Demote</h2></div>
-      <p style="color:var(--fg-dim);font-size:12px;margin-bottom:12px">Target's permission drops 1 level every ~4 messages in the selected room.</p>
-      <div class="form-row">
-        <select id="demoteRoomSel" onchange="loadDemoteMembers()"><option value="">-- Room --</option></select>
-        <select id="demoteMemSel"><option value="">-- Target --</option></select>
-        <button class="btn btn-accent btn-sm" onclick="addDemote()">Start</button>
+    <!-- 보안 로그 (전체 방 공통) -->
+    <div class="card" style="margin-top:8px">
+      <div class="card-head">
+        <h3>보안 로그 <span class="hint">프롬프트 탈취·조작 시도 (모든 방·갠톡)</span></h3>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="loadSecurity()">Refresh</button>
+          <button class="btn btn-red btn-sm" onclick="clearSecurity()">Clear</button>
+        </div>
       </div>
-      <div style="overflow-x:auto">
-        <table><thead><tr><th>Room</th><th>Target</th><th>Current Perm</th><th>Next in</th><th></th></tr></thead><tbody id="demoteBody"></tbody></table>
-      </div>
-      <div class="empty" id="demoteEmpty" hidden>No auto-demote active.</div>
+      <div id="secList"></div>
     </div>
   </div>
 
@@ -387,7 +411,7 @@ function changeApi() {
   API = clean;
   try { localStorage.setItem('pjhbot_api', clean); } catch(e){}
   toast('API: ' + clean);
-  loadStatus(); loadRooms(); loadTroll();
+  loadStatus(); loadRooms(); loadSecurity();
 }
 
 function toast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
@@ -433,7 +457,7 @@ async function loadRooms() {
 }
 
 function fillSelects() {
-  const ids=['permRoomSel','trollRoomSel','demoteRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel','chatRoomSel'];
+  const ids=['permRoomSel','sendRoomSel','replyRoomSel','logRoomSel','delRoomSel','statRoomSel','aiRoomSel','chatRoomSel'];
   ids.forEach(id=>{
     const sel=document.getElementById(id), val=sel.value;
     const isAll=sel.querySelector('option[value="0"]');
@@ -463,70 +487,92 @@ async function changePerm(uid,lv) {
   if(r&&r.ok) { toast('Permission updated'); await loadRooms(); loadPermRoom(); } else toast(r?.error||'Failed');
 }
 
-// Troll
-function loadTrollMembers() {
-  const idx=document.getElementById('trollRoomSel').value, sel=document.getElementById('trollMemSel');
-  sel.innerHTML='<option value="">-- User --</option>';
-  if(idx==='') return;
-  const room=roomsData[idx]; if(!room) return;
-  room.memberList.forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+// AI 탭 공용
+function aiRoom() { const i=document.getElementById('aiRoomSel').value; return i===''?null:roomsData[i]; }
+function emptyLine(t) { return '<div style="color:var(--fg-dim);font-size:12px;padding:8px 0">'+t+'</div>'; }
+function fillMemberSel(id, room) {
+  const sel=document.getElementById(id), val=sel.value;
+  sel.innerHTML='<option value="">-- 멤버 --</option>';
+  if(room) room.memberList.filter(m=>m.perm!==5).forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+  sel.value=val;
 }
+
+// 타겟 (트롤)
 async function loadTroll() {
   const d=await api('/api/troll');
-  const body=document.getElementById('trollBody'), empty=document.getElementById('trollEmpty');
-  if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; return; }
-  empty.hidden=true;
-  body.innerHTML=d.map(t=>{
-    const mode=t.isAI?'<span style="color:var(--accent)">AI</span>':'<span class="mono" style="font-size:12px">'+esc(t.message)+'</span>';
-    return '<tr><td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
-      +'<td>'+mode+'</td>'
-      +'<td><button class="btn btn-red btn-sm" onclick="removeTroll('+t.userId+')">Remove</button></td></tr>';
+  const el=document.getElementById('trollList');
+  if(!d||d.length===0) { el.innerHTML=emptyLine(d?'타겟 없음':'Bot offline'); return; }
+  const room=aiRoom();
+  const inRoom=new Set(room?room.memberList.map(m=>m.userId):[]);
+  el.innerHTML=d.map(t=>{
+    const mode=t.isAI?'<span class="badge badge-v">AI</span>':'<span class="badge badge-ii">고정</span> <span class="mono" style="font-size:12px;color:var(--fg-dim)">'+esc(t.message)+'</span>';
+    const away=room&&!inRoom.has(t.userId)?' <span style="font-size:11px;color:var(--fg-dim)">(다른 방)</span>':'';
+    return '<div class="row-item"><span style="color:var(--fg-bright);min-width:90px">'+esc(t.nick)+away+'</span>'
+      +'<span style="flex:1">'+mode+'</span>'
+      +'<button class="btn btn-red btn-sm" onclick="removeTroll('+t.userId+')">해제</button></div>';
   }).join('');
 }
 async function addTroll() {
-  const uid=document.getElementById('trollMemSel').value;
-  const isAI=document.getElementById('trollAI').checked;
+  const uid=document.getElementById('aiTargetSel').value;
+  const isAI=document.getElementById('trollMode').value==='ai';
   const msg=isAI?'__AI__':document.getElementById('trollMsg').value.trim();
-  if(!uid||(! isAI&&!msg)) { toast('Select user and enter message (or enable AI)'); return; }
+  if(!uid||(!isAI&&!msg)) { toast(isAI?'멤버를 선택하세요':'멤버 선택 + 문구 입력'); return; }
   const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:msg})});
-  if(r&&r.ok) { toast('Target added'); document.getElementById('trollMsg').value=''; document.getElementById('trollAI').checked=false; document.getElementById('trollMsg').disabled=false; loadTroll(); }
+  if(r&&r.ok) { toast('타겟 추가됨'); document.getElementById('trollMsg').value=''; loadTroll(); } else toast(r?.error||'Failed');
 }
 async function removeTroll(uid) {
   const r=await api('/api/troll',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid})});
-  if(r&&r.ok) { toast('Removed'); loadTroll(); }
+  if(r&&r.ok) { toast('타겟 해제됨'); loadTroll(); }
 }
 
-// Demote
-function loadDemoteMembers() {
-  const idx=document.getElementById('demoteRoomSel').value, sel=document.getElementById('demoteMemSel');
-  sel.innerHTML='<option value="">-- Target --</option>';
-  if(idx==='') return;
-  const room=roomsData[idx]; if(!room) return;
-  room.memberList.forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
-}
+// 자동 강등 (현재 방)
 async function loadDemote() {
+  const room=aiRoom(); if(!room) return;
   const d=await api('/api/demote');
-  const body=document.getElementById('demoteBody'), empty=document.getElementById('demoteEmpty');
-  if(!d||d.length===0) { body.innerHTML=''; empty.hidden=false; return; }
-  empty.hidden=true;
-  body.innerHTML=d.map(t=>
-    '<tr><td style="color:var(--fg-bright)">'+esc(t.roomName)+'</td>'
-    +'<td style="color:var(--fg-bright)">'+esc(t.nick)+'</td>'
-    +'<td>'+esc(t.currentPermName)+'</td>'
-    +'<td class="mono">'+t.remaining+' msgs</td>'
-    +'<td><button class="btn btn-red btn-sm" onclick="removeDemote('+t.chatId+')">Stop</button></td></tr>'
+  const el=document.getElementById('demoteList');
+  const mine=(d||[]).filter(t=>t.chatId===room.chatId);
+  if(mine.length===0) { el.innerHTML=emptyLine(d?'진행 중인 강등 없음':'Bot offline'); return; }
+  el.innerHTML=mine.map(t=>
+    '<div class="row-item"><span style="color:var(--fg-bright);min-width:90px">'+esc(t.nick)+'</span>'
+    +'<span style="flex:1">'+esc(t.currentPermName)+' · <span class="mono">'+t.remaining+'</span> msgs 후 하락</span>'
+    +'<button class="btn btn-red btn-sm" onclick="removeDemote('+t.chatId+')">중지</button></div>'
   ).join('');
 }
 async function addDemote() {
-  const idx=document.getElementById('demoteRoomSel').value, uid=document.getElementById('demoteMemSel').value;
-  if(idx===''||!uid) { toast('Select room and target'); return; }
-  const cid=roomsData[idx].chatId;
-  const r=await api('/api/demote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid,userId:+uid})});
-  if(r&&r.ok) { toast('Auto-demote started'); loadDemote(); } else toast(r?.error||'Failed');
+  const room=aiRoom(), uid=document.getElementById('aiDemoteSel').value;
+  if(!room||!uid) { toast('멤버를 선택하세요'); return; }
+  const r=await api('/api/demote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:room.chatId,userId:+uid})});
+  if(r&&r.ok) { toast('자동 강등 시작'); loadDemote(); } else toast(r?.error||'Failed');
 }
 async function removeDemote(cid) {
   const r=await api('/api/demote',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid})});
-  if(r&&r.ok) { toast('Auto-demote stopped'); loadDemote(); }
+  if(r&&r.ok) { toast('자동 강등 중지'); loadDemote(); }
+}
+
+// 보안 로그
+let secSeen=0;
+try { secSeen=+localStorage.getItem('pjhbot_secseen')||0; } catch(e){}
+async function loadSecurity() {
+  const d=await api('/api/security');
+  const el=document.getElementById('secList'), badge=document.getElementById('secBadge');
+  if(!d) { el.innerHTML=emptyLine('Bot offline'); return; }
+  const fresh=d.filter(e=>e.time>secSeen).length;
+  badge.hidden=fresh===0; badge.textContent=fresh;
+  if(document.getElementById('panel-aichat').classList.contains('active')&&d.length) {
+    secSeen=d[0].time; try{localStorage.setItem('pjhbot_secseen',secSeen);}catch(e){}
+  }
+  if(d.length===0) { el.innerHTML=emptyLine('감지된 시도 없음'); return; }
+  el.innerHTML=d.slice(0,100).map(e=>
+    '<div class="sec-item"><div class="sec-meta"><span style="color:var(--red);font-weight:600">'+esc(e.nick)+'</span>'
+    +'<span>'+esc(e.room||'')+'</span><span>'+fmtDate(e.time)+'</span>'
+    +'<span class="badge '+(e.detectedBy==='AI 판단'?'badge-v':'badge-i')+'">'+esc(e.detectedBy)+'</span></div>'
+    +'<div class="sec-text">'+esc(e.text)+'</div></div>'
+  ).join('');
+}
+async function clearSecurity() {
+  if(!confirm('보안 로그를 전부 지울까요?')) return;
+  const r=await api('/api/security',{method:'DELETE'});
+  if(r&&r.ok) { toast('보안 로그 삭제됨'); loadSecurity(); }
 }
 
 // Fake Reply
@@ -636,6 +682,7 @@ async function loadAi() {
   ps.innerHTML = '<option value="">-- Choose a preset --</option>';
   (aiData.presets||[]).forEach((p,i)=>{ ps.innerHTML += '<option value="'+i+'">'+esc(p.name)+'</option>'; });
   loadAiRoom();
+  loadSecurity();
 }
 function applyPreset() {
   const i = document.getElementById('aiPreset').value;
@@ -646,9 +693,14 @@ function applyPreset() {
 function loadAiRoom() {
   const idx = document.getElementById('aiRoomSel').value;
   const panel = document.getElementById('aiRoomPanel');
-  if (idx === '') { panel.hidden = true; return; }
-  panel.hidden = false;
+  const emptyEl = document.getElementById('aiRoomEmpty');
+  if (idx === '') { panel.hidden = true; emptyEl.hidden = false; return; }
+  panel.hidden = false; emptyEl.hidden = true;
   const room = roomsData[idx]; if (!room) return;
+  fillMemberSel('aiTargetSel', room);
+  fillMemberSel('aiDemoteSel', room);
+  loadTroll();
+  loadDemote();
   const cid = room.chatId;
   const on = aiData.rooms && aiData.rooms[cid] === true;
   const st = document.getElementById('aiStatus');
@@ -786,7 +838,7 @@ document.querySelectorAll('.tab').forEach(tab=>{
   });
 });
 
-async function init() { await loadStatus(); await loadRooms(); await loadTroll(); await loadDemote(); setInterval(loadStatus,5000); startChatAuto(); }
+async function init() { await loadStatus(); await loadRooms(); loadSecurity(); setInterval(loadStatus,5000); setInterval(loadSecurity,15000); startChatAuto(); }
 init();
 </script>
 </body>
