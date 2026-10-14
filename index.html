@@ -236,9 +236,9 @@ textarea { resize: vertical; min-height: 36px; }
 
   <!-- AI Mode -->
   <div class="panel" id="panel-aichat">
-    <div class="section-header"><h2>AI Control</h2></div>
+    <div class="section-header"><h2>AI Control</h2><span id="aiProviders" style="font-size:11px;display:flex;gap:6px"></span></div>
     <div id="aiKeyWarn" hidden style="background:var(--red-dim);border:1px solid var(--red);color:var(--red);padding:10px 14px;border-radius:8px;font-size:12px;margin-bottom:12px">
-      API key not set. Put your OpenRouter API key in <span class="mono">data/apikey.txt</span> next to the bot.
+      API key not set. Put an OpenRouter key in <span class="mono">data/apikey.txt</span> or a Gemini key in <span class="mono">data/geminikey.txt</span>.
     </div>
     <div class="form-row">
       <select id="aiRoomSel" onchange="loadAiRoom()" style="min-width:220px"><option value="">-- Room --</option></select>
@@ -678,6 +678,10 @@ async function loadAi() {
   if (!d) return;
   aiData = d;
   document.getElementById('aiKeyWarn').hidden = !!d.hasKey;
+  const prov = (name, ok, note) => '<span class="badge '+(ok?'badge-iv':'badge-0')+'" title="'+esc(note)+'">'+name+(ok?'':' ✕')+'</span>';
+  document.getElementById('aiProviders').innerHTML =
+    prov('OpenRouter'+(d.openRouterBlocked?' (한도 소진)':''), d.hasOpenRouter && !d.openRouterBlocked, d.hasOpenRouter?'기본':'data/apikey.txt 없음')
+    + prov('Gemini 예비', d.hasGemini, d.hasGemini?'OpenRouter 실패 시 사용':'data/geminikey.txt 없음');
   const ps = document.getElementById('aiPreset');
   ps.innerHTML = '<option value="">-- Choose a preset --</option>';
   (aiData.presets||[]).forEach((p,i)=>{ ps.innerHTML += '<option value="'+i+'">'+esc(p.name)+'</option>'; });
