@@ -450,10 +450,11 @@ textarea { resize: vertical; min-height: 36px; }
         </div>
         <div class="form-row">
           <select id="aiTargetSel" style="min-width:140px"><option value="">-- 멤버 --</option></select>
-          <select id="trollMode" onchange="document.getElementById('trollMsg').hidden=this.value!=='fixed'">
+          <select id="trollMode" onchange="trollModeChanged()">
             <option value="ai">AI</option>
             <option value="fixed">고정 문구</option>
           </select>
+          <select id="trollStyle" title="AI 성격"></select>
           <input type="text" id="trollMsg" placeholder="고정 답장 문구" style="flex:1;min-width:120px" hidden>
           <button class="btn btn-accent btn-sm" onclick="addTroll()">추가</button>
         </div>
@@ -776,14 +777,29 @@ function fillMemberSel(id, room) {
 }
 
 // 타겟 (트롤)
+let trollStyles=[];
+function trollModeChanged(){
+  const ai=document.getElementById('trollMode').value==='ai';
+  document.getElementById('trollStyle').hidden=!ai;
+  document.getElementById('trollMsg').hidden=ai;
+}
 async function loadTroll() {
   const d=await api('/api/troll');
   const el=document.getElementById('trollList');
-  if(!d||d.length===0) { el.innerHTML=emptyLine(d?'타겟 없음':'Bot offline'); return; }
+  if(!d) { el.innerHTML=emptyLine('Bot offline'); return; }
+  trollStyles=d.styles||[];
+  const ssel=document.getElementById('trollStyle');
+  if(ssel.options.length!==trollStyles.length) ssel.innerHTML=trollStyles.map(s=>'<option value="'+s.key+'">'+esc(s.name)+'</option>').join('');
+  trollModeChanged();
+  const targets=d.targets||[];
+  if(targets.length===0) { el.innerHTML=emptyLine('타겟 없음'); return; }
   const room=aiRoom();
   const inRoom=new Set(room?room.memberList.map(m=>m.userId):[]);
-  el.innerHTML=d.map(t=>{
-    const mode=t.isAI?'<span class="badge badge-v">AI</span>':'<span class="badge badge-ii">고정</span> <span class="mono" style="font-size:12px;color:var(--fg-dim)">'+esc(t.message)+'</span>';
+  const styleOpts=t=>trollStyles.map(s=>'<option value="'+s.key+'"'+(s.key===t.style?' selected':'')+'>'+esc(s.name)+'</option>').join('');
+  el.innerHTML=targets.map(t=>{
+    const mode=t.isAI
+      ? '<span class="badge badge-v">AI</span> <select onchange="setTrollStyle('+t.userId+',this.value)" style="padding:3px 6px;font-size:11px">'+styleOpts(t)+'</select>'
+      : '<span class="badge badge-ii">고정</span> <span class="mono" style="font-size:12px;color:var(--fg-dim)">'+esc(t.message)+'</span>';
     const away=room&&!inRoom.has(t.userId)?' <span style="font-size:11px;color:var(--fg-dim)">(다른 방)</span>':'';
     return '<div class="row-item"><span style="color:var(--fg-bright);min-width:90px">'+esc(t.nick)+away+'</span>'
       +'<span style="flex:1">'+mode+'</span>'
@@ -794,9 +810,14 @@ async function addTroll() {
   const uid=document.getElementById('aiTargetSel').value;
   const isAI=document.getElementById('trollMode').value==='ai';
   const msg=isAI?'__AI__':document.getElementById('trollMsg').value.trim();
+  const style=document.getElementById('trollStyle').value;
   if(!uid||(!isAI&&!msg)) { toast(isAI?'멤버를 선택하세요':'멤버 선택 + 문구 입력'); return; }
-  const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:msg})});
+  const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:msg,style})});
   if(r&&r.ok) { toast('타겟 추가됨'); document.getElementById('trollMsg').value=''; loadTroll(); } else toast(r?.error||'Failed');
+}
+async function setTrollStyle(uid,style){
+  const r=await api('/api/troll',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:+uid,message:'__AI__',style})});
+  if(r&&r.ok) { toast('성격 변경됨'); loadTroll(); } else toast(r?.error||'Failed');
 }
 async function removeTroll(uid) {
   const r=await api('/api/troll',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({userId:uid})});
