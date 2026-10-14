@@ -639,8 +639,18 @@ async function loadStatus() {
   const d=await api('/api/status');
   const dot=document.getElementById('statusDot'), info=document.getElementById('connInfo');
   if(d&&d.online) {
-    dot.classList.add('online'); info.textContent='localhost:8080'; info.className='conn-info on';
     info.style.cursor=''; info.onclick=null;
+    if (d.kakaoConnected === false) {
+      // 대시보드 서버는 살아있지만 카톡 연결이 끊긴 상태
+      dot.classList.remove('online');
+      const mins = d.kakaoDownSince ? Math.max(1, Math.round((Date.now() - d.kakaoDownSince) / 60000)) : 0;
+      info.textContent = '카톡 끊김 · 재연결 중' + (mins ? ' (' + mins + '분)' : '');
+      info.className = 'conn-info off';
+      info.title = d.lastDisconnectReason || '';
+    } else {
+      dot.classList.add('online'); info.textContent = 'localhost:8080'; info.className = 'conn-info on';
+      info.title = d.reconnects ? '재연결 ' + d.reconnects + '회 · 마지막 ' + fmtDate(d.lastReconnectAt) + (d.lastDisconnectReason ? ' (' + d.lastDisconnectReason + ')' : '') : '';
+    }
     document.getElementById('sUp').textContent=fmtUp(d.uptime);
     document.getElementById('sRm').textContent=d.rooms;
     document.getElementById('sMs').textContent=d.messages.toLocaleString();
