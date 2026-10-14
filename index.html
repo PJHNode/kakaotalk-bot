@@ -655,7 +655,14 @@ function loadAiRoom() {
   st.textContent = on ? 'ON' : 'OFF';
   st.className = 'badge ' + (on ? 'badge-iv' : 'badge-0');
   document.getElementById('aiToggleBtn').textContent = on ? 'Turn OFF' : 'Turn ON';
-  document.getElementById('aiPersona').value = (aiData.persona && aiData.persona[cid]) || '';
+  const curPersona = (aiData.persona && aiData.persona[cid]) || '';
+  document.getElementById('aiPersona').value = curPersona;
+  // 프리셋 매칭
+  const ps = document.getElementById('aiPreset');
+  ps.value = '';
+  if (curPersona) {
+    (aiData.presets||[]).forEach((p,i)=>{ if(p.prompt === curPersona) ps.value = String(i); });
+  }
   // tuning
   const pro = (aiData.proactive && aiData.proactive[cid]) || 0;
   document.getElementById('aiProactive').value = pro;
