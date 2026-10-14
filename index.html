@@ -535,7 +535,7 @@ textarea { resize: vertical; min-height: 36px; }
 
   <!-- Message Logs -->
   <div class="panel" id="panel-logs">
-    <div class="section-header"><h2>Message Log</h2><button class="btn btn-sm" onclick="loadLogs()">Refresh</button></div>
+    <div class="section-header"><h2>Message Log</h2><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="loadLogs()">Refresh</button><button class="btn btn-red btn-sm" onclick="clearMessages('messages')">전체 삭제</button></div></div>
     <div class="form-row">
       <select id="logRoomSel" onchange="loadLogs()"><option value="0">All Rooms</option></select>
       <select id="logLimit" onchange="loadLogs()">
@@ -548,7 +548,7 @@ textarea { resize: vertical; min-height: 36px; }
 
   <!-- Deleted -->
   <div class="panel" id="panel-deleted">
-    <div class="section-header"><h2>Deleted Messages</h2><button class="btn btn-sm" onclick="loadDeleted()">Refresh</button></div>
+    <div class="section-header"><h2>Deleted Messages</h2><div style="display:flex;gap:6px"><button class="btn btn-sm" onclick="loadDeleted()">Refresh</button><button class="btn btn-red btn-sm" onclick="clearMessages('deleted')">전체 삭제</button></div></div>
     <div class="form-row">
       <select id="delRoomSel" onchange="loadDeleted()"><option value="0">All Rooms</option></select>
     </div>
@@ -1113,6 +1113,18 @@ async function loadLogs() {
       +'<span class="time">'+fmtDate(m.timestamp)+'</span>'
       +'<div class="text">'+esc(m.text)+'</div></div>';
   }).join('');
+}
+
+// 기록 삭제: 위에서 고른 방만, '모든 방'이면 전체. 봇에 저장된 기록만 지우고 카톡 대화는 그대로
+async function clearMessages(kind) {
+  const sel = document.getElementById(kind === 'messages' ? 'logRoomSel' : 'delRoomSel').value;
+  const room = sel !== '0' && roomsData[sel] ? roomsData[sel] : null;
+  const what = kind === 'messages' ? '메시지 기록' : '삭제 감지 기록';
+  const where = room ? '"' + room.name + '" 방의 ' : '모든 방의 ';
+  if (!confirm(where + what + '을 전부 지울까요?\n(봇에 저장된 기록만 지워지고, 카톡 대화는 그대로예요. 되돌릴 수 없어요.)')) return;
+  const r = await api('/api/' + kind, {method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({chatId: room ? room.chatId : 0})});
+  if (r && r.ok) { toast(what + ' ' + r.removed + '건 삭제됨'); kind === 'messages' ? loadLogs() : loadDeleted(); loadStatus(); }
+  else toast(r?.error || 'Failed');
 }
 
 // Deleted Messages
