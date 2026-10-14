@@ -144,6 +144,7 @@ textarea { resize: vertical; min-height: 36px; }
 .kk-bubble { padding: 8px 12px; border-radius: 14px; font-size: 13px; line-height: 1.45; word-break: break-word; max-width: 100%; }
 .kk-row.other .kk-bubble { background: #2a2a3d; color: var(--fg-bright); border-top-left-radius: 4px; }
 .kk-row.me .kk-bubble { background: #3d5afe; color: #fff; border-top-right-radius: 4px; }
+.kk-quote { font-size: 11px; opacity: .75; border-left: 2px solid currentColor; padding: 1px 0 1px 7px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 .kk-bubble.deleted { background: transparent; border: 1px dashed var(--red); color: var(--red); font-style: italic; }
 .kk-deleted-tag { font-size: 10px; color: var(--red); font-weight: 600; margin-bottom: 3px; }
 .kk-orig { margin-top: 4px; font-size: 12px; color: var(--fg); background: rgba(245,91,122,.08); border-left: 2px solid var(--red); padding: 4px 8px; border-radius: 4px; font-style: normal; }
@@ -803,7 +804,8 @@ async function loadChat() {
         + '<div class="kk-bubble deleted">삭제됨'
         + '<div class="kk-orig">원본: '+esc(m.text)+'</div></div>';
     } else {
-      bubble = '<div class="kk-bubble">'+esc(m.text)+'</div>';
+      const quote = m.quote ? '<div class="kk-quote">'+esc(m.quote)+'</div>' : '';
+      bubble = '<div class="kk-bubble">'+quote+esc(m.text)+'</div>';
     }
     // 읽음 현황
     let readInfo = '';
