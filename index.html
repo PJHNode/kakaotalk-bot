@@ -769,10 +769,11 @@ async function changePerm(uid,lv) {
 // AI 탭 공용
 function aiRoom() { const i=document.getElementById('aiRoomSel').value; return i===''?null:roomsData[i]; }
 function emptyLine(t) { return '<div style="color:var(--fg-dim);font-size:12px;padding:8px 0">'+t+'</div>'; }
-function fillMemberSel(id, room) {
+function fillMemberSel(id, room, includeOwner) {
   const sel=document.getElementById(id), val=sel.value;
   sel.innerHTML='<option value="">-- 멤버 --</option>';
-  if(room) room.memberList.filter(m=>m.perm!==5).forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+'</option>'; });
+  // 강등은 오너에게 의미 없으니 제외, 타겟은 오너도 포함
+  if(room) room.memberList.filter(m=>includeOwner||m.perm!==5).forEach(m=>{ sel.innerHTML+='<option value="'+m.userId+'">'+esc(m.nick)+(m.perm===5?' (나)':'')+'</option>'; });
   sel.value=val;
 }
 
@@ -1218,8 +1219,8 @@ function loadAiRoom() {
   if (idx === '') { panel.hidden = true; emptyEl.hidden = false; return; }
   panel.hidden = false; emptyEl.hidden = true;
   const room = roomsData[idx]; if (!room) return;
-  fillMemberSel('aiTargetSel', room);
-  fillMemberSel('aiDemoteSel', room);
+  fillMemberSel('aiTargetSel', room, true);
+  fillMemberSel('aiDemoteSel', room, false);
   loadTroll();
   loadDemote();
   loadPeople();
