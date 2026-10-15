@@ -474,6 +474,16 @@ textarea { resize: vertical; min-height: 36px; }
         <div id="demoteList"></div>
       </div>
 
+      <!-- 말투 학습 -->
+      <div class="card">
+        <div class="card-head">
+          <h3>말투 학습 <span class="hint" id="styleCount">예시 문장을 주면 AI가 그 어투·말버릇을 흉내 냄</span></h3>
+        </div>
+        <p class="field-label" style="margin-bottom:8px">실제 대화 말투를 한 줄에 하나씩 붙여넣으세요. 내용이 아니라 <b>'말투'만</b> 따라합니다. (예의 타겟에게는 적용 안 됨)</p>
+        <textarea id="aiStyle" placeholder="ㅇㅋㅇㅋ 바로 감&#10;아 그거 ㄹㅇ 개웃기네 ㅋㅋㅋㅋ&#10;음... 그건 좀 아닌 듯?ㅎㅎ&#10;ㅈㅅㅈㅅ 내가 깜빡했다" style="width:100%;min-height:120px;font-family:'JetBrains Mono','Noto Sans KR',monospace;font-size:12px;line-height:1.6"></textarea>
+        <div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-accent btn-sm" onclick="saveStyle()">말투 저장</button><button class="btn btn-sm" onclick="clearStyle()">비우기</button></div>
+      </div>
+
       <!-- 4. 기억 -->
       <div class="card">
         <div class="card-head">
@@ -1248,7 +1258,27 @@ function loadAiRoom() {
   document.getElementById('aiTempVal').textContent = temp.toFixed(1);
   const len = (aiData.len && aiData.len[cid]) || 200;
   document.getElementById('aiLen').value = String(len);
+  // 말투 예시
+  const samples = (aiData.style && aiData.style[cid]) || [];
+  const styleBox = document.getElementById('aiStyle');
+  if (document.activeElement !== styleBox) styleBox.value = samples.join('\n');
+  document.getElementById('styleCount').textContent = samples.length
+    ? samples.length + '개 저장됨 · AI가 이 말투를 흉내 냄'
+    : '예시 문장을 주면 AI가 그 어투·말버릇을 흉내 냄';
   renderMemory(cid);
+}
+async function saveStyle() {
+  const room = aiRoom(); if (!room) return;
+  const text = document.getElementById('aiStyle').value;
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId: room.chatId, styleText: text})});
+  if (r && r.ok) { toast('말투 저장됨'); await loadAi(); } else toast(r?.error || 'Failed');
+}
+async function clearStyle() {
+  const room = aiRoom(); if (!room) return;
+  if (!confirm('이 방의 말투 예시를 비울까요?')) return;
+  document.getElementById('aiStyle').value = '';
+  const r = await api('/api/autochat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId: room.chatId, styleText: ''})});
+  if (r && r.ok) { toast('말투 비움'); await loadAi(); } else toast(r?.error || 'Failed');
 }
 function renderMemory(cid) {
   const list = (aiData.memory && aiData.memory[cid]) || [];
