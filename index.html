@@ -480,6 +480,7 @@ textarea { resize: vertical; min-height: 36px; }
           <h3>말투 학습 <span class="hint" id="styleCount">예시 문장을 주면 AI가 그 어투·말버릇을 흉내 냄</span></h3>
         </div>
         <p class="field-label" style="margin-bottom:8px">실제 대화 말투를 한 줄에 하나씩 붙여넣으세요. 내용이 아니라 <b>'말투'만</b> 따라합니다. (예의 타겟에게는 적용 안 됨)</p>
+        <div id="stylePresetRow" class="log-filters" style="margin-bottom:8px"></div>
         <textarea id="aiStyle" placeholder="ㅇㅋㅇㅋ 바로 감&#10;아 그거 ㄹㅇ 개웃기네 ㅋㅋㅋㅋ&#10;음... 그건 좀 아닌 듯?ㅎㅎ&#10;ㅈㅅㅈㅅ 내가 깜빡했다" style="width:100%;min-height:120px;font-family:'JetBrains Mono','Noto Sans KR',monospace;font-size:12px;line-height:1.6"></textarea>
         <div style="margin-top:8px;display:flex;gap:6px"><button class="btn btn-accent btn-sm" onclick="saveStyle()">말투 저장</button><button class="btn btn-sm" onclick="clearStyle()">비우기</button></div>
       </div>
@@ -1265,7 +1266,38 @@ function loadAiRoom() {
   document.getElementById('styleCount').textContent = samples.length
     ? samples.length + '개 저장됨 · AI가 이 말투를 흉내 냄'
     : '예시 문장을 주면 AI가 그 어투·말버릇을 흉내 냄';
+  renderStylePresets();
   renderMemory(cid);
+}
+// 말투 프리셋 — 실제 대화에서 뽑은 사람별 말투. 버튼 누르면 아래 칸에 채워짐
+const STYLE_PRESETS = {
+  '윤규체': [
+    '오 신기하당 헤', 'ㄱ재밌네 근데 ㅈㄴ무섭', '나 지금 숙제 해야돼서 있다가', 'ㅇㅋ 시간나는대로 해볼게 ㅃ2',
+    '아 ㅆㄹ 공부함 ㅍ2', 'WTF 이새끼 인간시대의 끝이 도래했나', '샤갈 ㅈㄹ하고 자빠졌네', '흐으으으으음 생각해볼게 잠만',
+    '바빠여 선생님 진도가 개빨ㄹ라', '우끼끼 저 원숭이여서 중딩도 어려워여', '됐어ㅠ 어차피망했어 해', 'ㅗ 너는이긴다',
+    '아 맞다 ㅇㅇ 할건데', '나 이래뵈도 집에', '하아 맞긴해', '겠니ㅠ', '아니 ㅅㅂ 자동완성', '오 좋은데? 근데어떻게만듬',
+    '아 꺼져 나지금 놁ㆍㄱ야', '에베베', '뀨', '허허허 이거참', '나 여행와서 오늘 내일 전부 할건데 ㅋ', '아 나 밥 ㅃ2',
+    '이거 ㄹㅇ ㄱ재밌네', '흠 ㅇㅋ 한번 해볼게', '와 벽느꼈어', '하아 염병 애초에 그런걸 안봐', 'ㅗ=(^o^)=ㅗ', '나는병신이다 ㅋㅋㅋㅋ'
+  ],
+  '윤결체': [
+    '오 신기하다', 'ㅋㅋㅋ ㅇㅈ', '흠 흐으음', '까비 ㅠㅠ', '아 ㅆㄹ 공방킴', '유', '그니까 ㅋ', '오 굿 베리굿',
+    '아하 ㅇㅋ', '너무 시끄러움', '하아... 망했다', '진짜 어려움 B보다 어려웠음', '오 대박', '쩝 까비', '윤규야 화이팅',
+    'ㅋㅋㅋ 어이없네', '흠 더 어렵게?', '아니 왜 안 돼', '심심해 으아아악', '나도 재밌음 이따 겜 ㄱㄱ?'
+  ]
+};
+function renderStylePresets() {
+  const row = document.getElementById('stylePresetRow');
+  if (!row) return;
+  row.innerHTML = Object.keys(STYLE_PRESETS).map(name =>
+    '<button type="button" onclick="applyStylePreset(\'' + name + '\')" title="' + STYLE_PRESETS[name].length + '줄">' + esc(name) + '</button>').join('')
+    + '<span style="color:var(--fg-dim);font-size:11px;align-self:center">← 클릭하면 아래 칸에 채워져요</span>';
+}
+function applyStylePreset(name) {
+  const lines = STYLE_PRESETS[name]; if (!lines) return;
+  const box = document.getElementById('aiStyle');
+  if (box.value.trim() && !confirm("'" + name + "'(으)로 바꿀까요? 지금 입력한 내용은 지워져요.")) return;
+  box.value = lines.join('\n');
+  toast(name + ' 불러옴 · 저장을 눌러야 적용돼요');
 }
 async function saveStyle() {
   const room = aiRoom(); if (!room) return;
