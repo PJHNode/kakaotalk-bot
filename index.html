@@ -279,7 +279,8 @@ textarea { resize: vertical; min-height: 36px; }
   <div class="panel active" id="panel-rooms">
     <div class="section-header"><h2>Chatrooms</h2><button class="btn btn-sm" onclick="loadRooms()">Refresh</button></div>
     <div style="overflow-x:auto">
-      <table><thead><tr><th>Name</th><th>Type</th><th>Members</th></tr></thead><tbody id="roomsBody"></tbody></table>
+      <table><thead><tr><th>Name</th><th>Type</th><th>Members</th><th title="언론사 여러 곳이 같은 [속보]를 내면 이 방에 바로 알림">속보 알림</th></tr></thead><tbody id="roomsBody"></tbody></table>
+      <div id="breakingInfo" style="font-size:12px;color:var(--fg-dim);padding:10px 2px;line-height:1.6"></div>
     </div>
     <div class="empty" id="roomsEmpty">Loading...</div>
   </div>
@@ -741,9 +742,35 @@ async function loadRooms() {
   body.innerHTML=d.map(r=>
     '<tr><td style="color:var(--fg-bright);font-weight:500">'+esc(r.name)+'</td>'
     +'<td><span class="mono" style="font-size:11px;color:var(--fg-dim)">'+esc(r.type)+'</span></td>'
-    +'<td>'+r.members+'</td></tr>'
+    +'<td>'+r.members+'</td>'
+    +'<td><label class="chk"><input type="checkbox"'+(r.breaking?' checked':'')+' onchange="toggleBreaking('+r.chatId+',this)"> '+(r.breaking?'켜짐':'꺼짐')+'</label></td></tr>'
   ).join('');
   fillSelects();
+  loadBreakingInfo();
+}
+
+async function toggleBreaking(cid, el) {
+  const on = el.checked;
+  const r = await api('/api/breaking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatId:cid,on})});
+  if (r && r.rooms) {
+    const rm = roomsData.find(x=>x.chatId===cid); if (rm) rm.breaking = on;
+    el.parentNode.lastChild.textContent = ' '+(on?'켜짐':'꺼짐');
+    toast(on?'속보 알림 켬':'속보 알림 끔');
+    renderBreakingInfo(r);
+  } else { el.checked = !on; toast(r?.error||'Failed'); }
+}
+
+async function loadBreakingInfo() {
+  const r = await api('/api/breaking');
+  if (r) renderBreakingInfo(r);
+}
+function renderBreakingInfo(r) {
+  const box = document.getElementById('breakingInfo');
+  const ago = r.lastPollAt ? Math.max(0, Math.round((Date.now()-r.lastPollAt)/60000))+'분 전 확인' : (r.rooms.length ? '확인 대기 중' : '켜진 방이 없어 확인 안 함');
+  let h = '<b style="color:var(--fg-bright)">속보 알림</b> — 언론사 '+r.minSources+'곳 이상이 같은 [속보]를 내면 켜진 방에 바로 보냄 · '+ago
+    +(r.lastError ? ' · <span style="color:var(--red)">'+esc(r.lastError)+'</span>' : '');
+  if (r.recent && r.recent.length) h += '<div style="margin-top:6px">'+r.recent.slice(0,5).map(b=>'· '+esc(b.title)+' <span style="color:var(--fg-dim)">('+b.n+'곳, '+new Date(b.at).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+')</span>').join('<br>')+'</div>';
+  box.innerHTML = h;
 }
 
 function fillSelects() {
